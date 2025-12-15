@@ -20,23 +20,19 @@
 #include <stdint.h>
 
 // =============================================================================
-// TreeNode Structure Definition
+// TreeNode Structure - 已在stm32_sleep_posture.h中定义 (2025-12-16)
+// TreeNode Structure - Already defined in stm32_sleep_posture.h
 // =============================================================================
-
-typedef struct {
-    uint8_t feature_index;      // Feature index for split (255 = leaf node)
-    float threshold;             // Split threshold (-2.0 for leaf nodes)
-    int16_t left_child;          // Left child node index (-1 = leaf)
-    int16_t right_child;         // Right child node index (-1 = leaf)
-    float leaf_value;            // Class probability for leaf nodes (0-1)
-} TreeNode_t;
+// NOTE: TreeNode_t is defined in stm32_sleep_posture.h
+// 注意: TreeNode_t在stm32_sleep_posture.h中定义
 
 // =============================================================================
-// Model Configuration
+// Model Configuration - 模型配置 (2025-12-16)
 // =============================================================================
 
 #define RF_NUM_FEATURES         41
-#define RF_NUM_TREES            30
+// NOTE: RF_NUM_TREES is defined in stm32_sleep_posture.h as 30
+// 注意: RF_NUM_TREES在stm32_sleep_posture.h中定义为30
 
 // =============================================================================
 // Feature Scaling Parameters (from RobustScaler)

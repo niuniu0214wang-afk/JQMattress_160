@@ -98,8 +98,8 @@ typedef struct {
 // Random Forest Model Parameters 随机森林模型参数
 // =============================================================================
 
-// Model configuration 模型配置
-#define RF_NUM_TREES            20      // 决策树数量 (简化以适应STM32)
+// Model configuration 模型配置 (更新2025-12-16)
+#define RF_NUM_TREES            30      // 决策树数量 (更新为30棵树优化模型)
 #define RF_MAX_DEPTH            8       // 最大深度
 #define RF_NUM_FEATURES_PER_TREE 15     // 每棵树使用的特征数
 
