@@ -715,7 +715,7 @@ int Model(const uint8_t *input)
                     // 直接分配到输出变量 - 避免struct对齐问题
                     int x_val = (int)com_upper.row;
                     int y_val = (int)com_upper.col;
-                    if (x_val >= 0 && x_val <= 255) s_posture_1 = (uint8_t)x_val;
+                    if (x_val >= 0 && x_val <= 255) s_waist_x_1 = (uint8_t)x_val;
                     if (y_val >= 0 && y_val <= 255) s_waist_y_1 = (uint8_t)y_val;
                     s_posture_1 = (uint8_t)posture_upper;
                     person_count = 1;

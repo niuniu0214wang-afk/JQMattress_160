@@ -188,35 +188,13 @@ static void upload_StatusPackage(void)
 {
     uint8_t myPayload[10 + 260] = {0x02, 0x11, 0x01, 0x0a};
     rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_DATA;
-    static unsigned char s_posture[6][WINDOW_SIZE];
-    static unsigned char s_pos = 0;
+    myPayload[4] = g_posture_0;
+    myPayload[5] = g_waist_x_0;
+    myPayload[6] = g_waist_y_0;
+    myPayload[7] = g_posture_1;
+    myPayload[8] = g_waist_x_1;
+    myPayload[9] = g_waist_y_1;
 
-    s_pos %= WINDOW_SIZE;
-    s_posture[0][s_pos] = g_posture_0;
-    s_posture[1][s_pos] = g_waist_x_0;
-    s_posture[2][s_pos] = g_waist_y_0;
-    s_posture[3][s_pos] = g_posture_1;
-    s_posture[4][s_pos] = g_waist_x_1;
-    s_posture[5][s_pos] = g_waist_y_1;
-
-    if (++s_pos >= 5)
-    {
-        myPayload[4] = find_most_value(s_posture[0], WINDOW_SIZE);
-        myPayload[5] = calc_avg(s_posture[1], WINDOW_SIZE);
-        myPayload[6] = calc_avg(s_posture[2], WINDOW_SIZE);
-        myPayload[7] = find_most_value(s_posture[3], WINDOW_SIZE);
-        myPayload[8] = calc_avg(s_posture[4], WINDOW_SIZE);
-        myPayload[9] = calc_avg(s_posture[5], WINDOW_SIZE);
-    }
-    else
-    {
-        myPayload[4] = 0xFF;
-        myPayload[5] = 0xFF;
-        myPayload[6] = 0xFF;
-        myPayload[7] = 0xFF;
-        myPayload[8] = 0xFF;
-        myPayload[9] = 0xFF;
-    }
 
     // 空数据置零 - 如果两个posture都是0/FF则清零
     if ((myPayload[4] == 0 || myPayload[4] == 0xff) &&
