@@ -1,7 +1,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-char Project_Version[16] = "V1.3.0";
+char Project_Version[16] = "V1.3.1";
 unsigned short sensor_uart_rx_len = 0;
 unsigned char sensor_uart_rx_buffer[SENSOR_RX_BUFFER_SIZE]; // DMA搬运目标缓存
 unsigned short output_uart_rx_len = 0;
@@ -29,6 +29,7 @@ int main(void)
     MX_USART2_UART_Init();
     MX_USART3_UART_Init();
     SEGGER_RTT_Init();
+    cnn_posture_init();
 //    MX_X_CUBE_AI_Init();
     /* USER CODE BEGIN 2 */
 

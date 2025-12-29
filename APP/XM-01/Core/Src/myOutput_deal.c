@@ -117,32 +117,6 @@ unsigned char find_most_value(unsigned char *arr, unsigned int len)
  * @return  none.
  * @note    none
 /-------------------/-------------------/-------------------/-----------------*/
-static unsigned char calc_avg(unsigned char *arr, unsigned int len)
-{
-    double sum = 0;
-    unsigned int cnt = 0;
-
-    for (int i = 0; i < len; i++)
-    {
-        if (arr[i] != 0xFF)
-        {
-            sum += arr[i];
-            cnt++;
-        }
-    }
-
-    if (cnt)
-    {
-        sum /= cnt;
-        sum += 0.5;
-    }
-    else
-    {
-        return 0xFF;
-    }
-
-    return ((unsigned char)sum);
-}
 
 /*------------------/-------------------/-------------------/------------------/
  * @brief   30 17 设备信息上报
