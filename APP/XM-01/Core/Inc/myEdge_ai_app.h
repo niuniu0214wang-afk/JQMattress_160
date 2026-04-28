@@ -6,7 +6,7 @@
 #include "usart.h"
 #include "mySensor_deal.h"
 //#include "app_x-cube-ai.h"
-#include "mcu_body_analyzer.h"
+//#include "mcu_body_analyzer.h"
 
 #define SENSOR_ROWS 26
 #define SENSOR_COLS 10
@@ -53,31 +53,8 @@ uint32_t calc_260_sum(const uint8_t *data);
 /* 计算260个元素中非零值的个数 - 2025-11-04 */
 uint16_t sensor_number(const uint8_t *data);
 
-/* 人数检测 - 基于压力和、活跃传感器、连通分量的混合方法 - 2025-11-04 */
-int detect_person_count(const uint8_t *matrix, uint32_t total_pressure, uint16_t active_sensors);
-
-/* 计算质心(Center of Mass) - 接收整数类型的传感器数据 - 2025-11-04 */
-CoM_t calculate_com(const uint8_t *matrix);
-
-/* 分割矩阵为上下两部分(各13行) - 2025-11-06 */
-void split_dual_matrix(const uint8_t *input_data, uint8_t *upper_matrix, uint8_t *lower_matrix);
-
-/* 计算矩阵中的有效(非零)传感器点数 - 2025-11-06 */
-uint16_t count_nonzero_sensors_in_matrix(const uint8_t *matrix);
-
-/* 计算矩阵上半部分的非零传感器点数 - 2025-11-06 */
-uint16_t count_nonzero_in_upper_half(const uint8_t *input_data);
-
-/* 计算矩阵下半部分的非零传感器点数 - 2025-11-06 */
-uint16_t count_nonzero_in_lower_half(const uint8_t *input_data);
-
-/* 计算矩阵上半部分的压力和 - 2025-11-06 */
-uint32_t calc_sum_upper_half(const uint8_t *input_data);
-
-/* 计算矩阵下半部分的压力和 - 2025-11-06 */
-uint32_t calc_sum_lower_half(const uint8_t *input_data);
-
 /* Model处理函数 - 集成所有检测逻辑，返回人数(0=空床, 1=一人, 2=两人) - 2025-11-06 */
 int Model(const uint8_t *input);
+rt_bool_t ai_should_schedule_model(const uint8_t *input);
 
 #endif // MYEDGE_AI_APP_H

@@ -20,6 +20,24 @@ unsigned char test_data[1024] =
    //1-2 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 80, 91, 102, 135, 115, 112, 148, 124, 154, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74, 74, 190, 182, 173, 160, 201, 171, 221, 246, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 147, 177, 186, 195, 251, 132, 144, 103, 169, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 141, 194, 177, 63, 81, 17, 15, 7, 9, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 22, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41, 5, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 115, 135, 46, 12, 15, 5, 5, 5, 9, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 55, 13, 41, 0, 0, 0, 5, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 };
+
+// 测试数据260字节，来自parsed_sensor_data.csv第一行sensor_data，十六进制转十进制 (2026-03-23)
+unsigned char test_data_260[260] =
+{
+    0,   0,   0,   0,   0,   0,  18,   0,   0,   7,   0,   0,   0,   0,   7,   0,  10,   0,  21,   0,
+    0,   0,   0,   0,   0,   0,   8,   0,   0,   0,   0,   0,  14,   0,   0,   0,  18,   0,   0,   0,
+    0,   0,   0,   0,   0,   0,   5,   0,   0,   0,   0,   8,  11,   0,   0,   6,  23,   0,   0,   6,
+    0,   0,   0,   0,   5,   0,   0,   0,   0,   0,   0,   5,  27,   5,   0,  22,  48,   5,   0,   0,
+   11,   0,   5,   0,   5,   0,   0,   0,   7,   0,   0,   0,   0,   0,   0,   0,  30,   0,   0,   0,
+    0,  32,  43,   0,   6,   0,  10,   0,   6,   9,   0,   0,   0,   0,   0,   0,   7,   0,   0,   0,
+    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+    0,   0,   0,   0,   0,   0,   0,   0,  18,   0,  12,   0,   0,  26,   0,   9,   0,   0,   0,   7,
+    0,   0,   0,   0,   0,  17,   5,   0,   0,   0,   0,   0,   0,   6,   0,   6,   0,  16,   0,  10,
+    6,   6,   0,   0,   0,   7,   0,   0,   0,   7,   0,   0,   0,  15,   5,  59,  36,  57,  21,  14,
+    9,  15,   7,  35,  36,  74,  69,  55,  49, 150,  61,  99, 137, 168, 130, 135, 196, 153,  79, 189,
+  168, 107, 128, 182, 180, 173, 145, 156, 158, 128, 136,  80,  41,  97,  47,  93, 159, 135, 163,  19,
+   12,  26,  15,  80,  13,  92,  84, 128, 140,  17,   5,   5,   5,  31,   7,  38,  61,  50, 124,   0
+};
 #endif
 /*------------------/-------------------/-------------------/------------------/
  * @brief   
@@ -173,6 +191,10 @@ extern void preprocess_1024_to_260(const rt_uint8_t *raw_1024_data, rt_uint8_t *
 rt_bool_t extract_mattress_frame(const uint8_t *dma_buf, size_t dma_len)
 {
     // 本地缓存用于查找帧头，不修改原始DMA缓存
+    #if DEBUG_MODE
+    rt_kprintf("[DBG] extract_mattress_frame: dma_len=%d, local_buf[0..3]=%02X %02X %02X %02X\n",
+        dma_len, local_buf[0], local_buf[1], local_buf[2], local_buf[3]);
+    #endif
     if (dma_len > sizeof(local_buf))
     {
         rt_kprintf("Data error to cache\n");
@@ -183,6 +205,10 @@ rt_bool_t extract_mattress_frame(const uint8_t *dma_buf, size_t dma_len)
     {
         if (rt_memcmp(&local_buf[i], FRAME_HEADER, FRAME_HEADER_LEN) == 0)
         {
+            #if DEBUG_MODE
+            rt_kprintf("[DBG] frame header found at i=%d, need i+FRAME_LEN=%d <= dma_len=%d\n",
+                i, i + FRAME_LEN, dma_len);
+            #endif
             if (i + FRAME_LEN <= dma_len)
             {
                 #if DEBUG_MODE
@@ -197,11 +223,19 @@ rt_bool_t extract_mattress_frame(const uint8_t *dma_buf, size_t dma_len)
                     rt_memcpy(Origin_MattressData_Resize, &local_buf[i + FRAME_HEADER_LEN], FRAME_LEN);
                 #endif
                 preprocess_1024_to_260(Origin_MattressData_Resize, Origin_MattressData);
+                #if DEBUG_MODE
+                rt_kprintf("[DBG] after preprocess, Origin_MattressData[0..5]=%d %d %d %d %d %d\n",
+                    Origin_MattressData[0], Origin_MattressData[1], Origin_MattressData[2],
+                    Origin_MattressData[3], Origin_MattressData[4], Origin_MattressData[5]);
+                #endif
                 rt_memcpy(UploadSrcMattressData, Origin_MattressData, sizeof(UploadSrcMattressData));
                 return RT_TRUE;
             }
             else
             {
+                #if DEBUG_MODE
+                rt_kprintf("[DBG] not enough data after header, returning FALSE\n");
+                #endif
                 return RT_FALSE;
             }
         }
@@ -233,7 +267,12 @@ static void sensor_thread_entry(void *parameter)
         if (rt_event_recv(&uart_rx_event, 0x01, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &e) == RT_EOK)
         {
             if (sensor_uart_rx_len < 1024)
+            {
+                #if DEBUG_MODE
+                rt_kprintf("[DBG] sensor_uart_rx_len=%d < 1024, skipped\n", sensor_uart_rx_len);
+                #endif
                 continue;
+            }
 			
             rt_enter_critical();
             myUSART2_DMA_Disable();
@@ -243,12 +282,31 @@ static void sensor_thread_entry(void *parameter)
             rt_exit_critical();
             rt_memset(Origin_MattressData, 0, sizeof(Origin_MattressData));
             // 处理函数 拷贝 成功
+            #if DEBUG_MODE
+            rt_kprintf("[DBG] calling extract, rx_len=%d\n", sensor_uart_rx_len);
+            #endif
             if (extract_mattress_frame(sensor_uart_rx_buffer, sizeof(sensor_uart_rx_buffer)))
             {
-                model.status = AI_STATUS_IDLE;
-                // rt_kprintf("Deal Data Ready...\n");
-                rt_event_send(&data_ready_event, 0x01);
+                #if DEBUG_MODE
+                rt_kprintf("[DBG] extract OK, Origin[0..5]=%d %d %d %d %d %d, Upload[0..5]=%d %d %d %d %d %d\n",
+                    Origin_MattressData[0], Origin_MattressData[1], Origin_MattressData[2],
+                    Origin_MattressData[3], Origin_MattressData[4], Origin_MattressData[5],
+                    UploadSrcMattressData[0], UploadSrcMattressData[1], UploadSrcMattressData[2],
+                    UploadSrcMattressData[3], UploadSrcMattressData[4], UploadSrcMattressData[5]);
+                #endif
+                if (ai_should_schedule_model(Origin_MattressData))
+                {
+                    model.status = AI_STATUS_IDLE;
+                    // rt_kprintf("Deal Data Ready...\n");
+                    rt_event_send(&data_ready_event, 0x01);
+                }
             }
+            #if DEBUG_MODE
+            else
+            {
+                rt_kprintf("[DBG] extract returned FALSE\n");
+            }
+            #endif
             rt_memset(sensor_uart_rx_buffer, 0, sizeof(sensor_uart_rx_buffer));
         }
         rt_thread_mdelay(15);

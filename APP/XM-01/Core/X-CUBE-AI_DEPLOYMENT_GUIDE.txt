@@ -1,0 +1,162 @@
+
+================================================================================
+X-CUBE-AI 部署指南
+================================================================================
+
+## 步骤1: 准备模型文件
+
+已生成的模型文件:
+1. person_detection_e2e.h5 (推荐) - 端到端模型，直接输入260字节
+2. person_detection_e2e.tflite - TFLite格式
+3. person_detection_keras.h5 - 基于特征的模型
+
+推荐使用: person_detection_e2e.h5 (最简单，无需手动特征提取)
+
+## 步骤2: 在STM32CubeMX中配置X-CUBE-AI
+
+1. 打开STM32CubeMX项目
+2. 在左侧选择 "Software Packs" -> "Select Components"
+3. 展开 "STMicroelectronics.X-CUBE-AI"，勾选 "Core"
+4. 点击 "OK"
+
+## 步骤3: 添加AI模型
+
+1. 在 "Pinout & Configuration" 标签页
+2. 点击左侧 "Software Packs" -> "STMicroelectronics.X-CUBE-AI"
+3. 在右侧 "Mode" 中勾选 "Core"
+4. 切换到 "Configuration" 标签
+5. 点击 "Add network"
+6. 配置:
+   - Model Name: person_detection
+   - Model Type: Keras
+   - Model File: 浏览选择 person_detection_e2e.h5
+7. 点击 "Analyze" 验证模型
+8. 查看分析结果:
+   - Input shape: (1, 260)
+   - Output shape: (1, 2)
+   - Flash: ~XX KB
+   - RAM: ~XX KB
+
+## 步骤4: 生成代码
+
+1. 点击 "Generate Code"
+2. STM32CubeMX会生成:
+   - X-CUBE-AI/App/person_detection.c
+   - X-CUBE-AI/App/person_detection.h
+   - X-CUBE-AI/App/person_detection_data.c
+
+## 步骤5: 集成到项目
+
+在 myEdge_ai_app.c 中:
+
+```c
+#include "person_detection.h"
+
+// 全局变量
+static ai_handle person_detection_handle = AI_HANDLE_NULL;
+static ai_u8 activations[AI_PERSON_DETECTION_DATA_ACTIVATIONS_SIZE];
+static ai_float in_data[260];
+static ai_float out_data[2];
+
+// 初始化AI模型
+int init_person_detection_model(void)
+{
+    ai_error err;
+
+    // 创建模型
+    err = ai_person_detection_create(&person_detection_handle,
+                                     AI_PERSON_DETECTION_DATA_CONFIG);
+    if (err.type != AI_ERROR_NONE) {
+        return -1;
+    }
+
+    // 初始化
+    ai_network_params params = {
+        AI_PERSON_DETECTION_DATA_WEIGHTS(ai_person_detection_data_weights_get()),
+        AI_PERSON_DETECTION_DATA_ACTIVATIONS(activations)
+    };
+
+    if (!ai_person_detection_init(person_detection_handle, &params)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+// 预测人数
+uint8_t predict_person_count(const uint8_t *sensor_data)
+{
+    ai_i32 batch;
+    ai_buffer *ai_input;
+    ai_buffer *ai_output;
+
+    // 准备输入数据 (归一化到[0,1])
+    for (int i = 0; i < 260; i++) {
+        in_data[i] = (ai_float)sensor_data[i] / 255.0f;
+    }
+
+    // 获取输入输出缓冲区
+    ai_input = ai_person_detection_inputs_get(person_detection_handle, NULL);
+    ai_output = ai_person_detection_outputs_get(person_detection_handle, NULL);
+
+    // 设置输入
+    ai_input[0].data = AI_HANDLE_PTR(in_data);
+    ai_output[0].data = AI_HANDLE_PTR(out_data);
+
+    // 运行推理
+    batch = ai_person_detection_run(person_detection_handle, ai_input, ai_output);
+    if (batch != 1) {
+        return 0;  // 错误
+    }
+
+    // 解析输出 (out_data[0]=1人概率, out_data[1]=2人概率)
+    uint8_t predicted_persons = (out_data[1] > out_data[0]) ? 2 : 1;
+
+    return predicted_persons;
+}
+
+// 在Model()函数中使用
+uint8_t Model(const uint8_t *input)
+{
+    // 使用AI模型预测人数
+    uint8_t predicted_persons = predict_person_count(input);
+
+    if (predicted_persons == 2) {
+        // 双人处理逻辑
+        split_dual_matrix(input, upper_matrix, lower_matrix);
+        // ... 保持原有双人处理代码
+    } else {
+        // 单人处理逻辑
+        // ... 保持原有单人处理代码
+    }
+
+    return predicted_persons;
+}
+```
+
+## 步骤6: 编译和测试
+
+1. 在main.c的初始化部分调用:
+   ```c
+   init_person_detection_model();
+   ```
+
+2. 编译项目
+3. 烧录到STM32
+4. 测试准确率
+
+## 预期结果
+
+- 人数检测准确率: 100% (基于训练数据)
+- 推理时间: ~10-20ms
+- Flash占用: ~50-100KB
+- RAM占用: ~20-30KB
+
+## 优化建议
+
+如果资源不足:
+1. 使用量化: 在X-CUBE-AI中启用 "Compression" -> "8-bit quantization"
+2. 减少网络层数
+3. 使用TFLite模型
+
+================================================================================

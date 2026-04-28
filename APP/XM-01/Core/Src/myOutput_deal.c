@@ -162,20 +162,14 @@ static void upload_StatusPackage(void)
 {
     uint8_t myPayload[10 + 260] = {0x02, 0x11, 0x01, 0x0a};
     rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_DATA;
+
+    /* 直接使用AI线程输出的稳定值（25帧EMA+变化检测已保证稳定性）(2026-04-07) */
     myPayload[4] = g_posture_0;
     myPayload[5] = g_waist_x_0;
     myPayload[6] = g_waist_y_0;
     myPayload[7] = g_posture_1;
     myPayload[8] = g_waist_x_1;
     myPayload[9] = g_waist_y_1;
-
-
-    // 空数据置零 - 如果两个posture都是0/FF则清零
-    if ((myPayload[4] == 0 || myPayload[4] == 0xff) &&
-        (myPayload[7] == 0 || myPayload[7] == 0xff))
-    {
-        rt_memset(myPayload + 4, 0xff, 6);
-    }
 
     rt_memcpy(myPayload + 10, UploadSrcMattressData, sizeof(UploadSrcMattressData));
     //---------------------------------------------
@@ -643,7 +637,7 @@ static void comm_state_machine_run(void)
 
             /* 开始OTA回复 */
             unsigned char output_frame_ctrl = FRAME_CTL_TYPE_ACK;
-            unsigned char payload[5] = {0xF0, 0x03, 0x00, 0x01};
+            unsigned char payload[5] = {0xF0, 0x03, 0x00, 0x01, 0x00};
 
             if (rx_frame.need_ack)
             {
@@ -818,7 +812,7 @@ static void comm_state_machine_run(void)
 ////////////////////////////////////////////////////////////////////////////////////
 
 /* 定义线程栈与控制块（静态分配） */
-#define OUTPUT_THREAD_STACK_SIZE 1024
+#define OUTPUT_THREAD_STACK_SIZE 2048  /* 增大线程栈防止upload_StatusPackage中270字节局部变量导致栈溢出 (2026-04-07) */
 struct rt_event output_uart_rx_event; // 静态事件对象;
 static struct rt_thread output_thread;
 static rt_uint8_t output_thread_stack[OUTPUT_THREAD_STACK_SIZE];
