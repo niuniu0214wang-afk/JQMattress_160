@@ -1,7 +1,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "ai_model_wrapper.h"  // X-CUBE-AI睡姿分类模型包装 (2026-03-03)
-// #include "person_detection_wrapper.h"  // 已移除 (2026-03-23)
 
 char Project_Version[16] = "V1.3.1";
 unsigned short sensor_uart_rx_len = 0;
@@ -33,7 +32,6 @@ int main(void)
     SEGGER_RTT_Init();
     // cnn_posture_init();  // 旧的手写CNN初始化 (2025-12-22)
     ai_wrapper_init();        // 睡姿分类模型初始化 (2026-04-07)
-    // person_detection_init(); // 已移除，改用自适应基线+时间投票法 (2026-03-23)
 //    MX_X_CUBE_AI_Init();
     /* USER CODE BEGIN 2 */
 

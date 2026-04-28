@@ -1,0 +1,32 @@
+# Keil / build outputs
+*.map
+*.lst
+JLinkLog.txt
+*.uvguix.*
+*.uvgui.*
+
+# Local assistant/editor state
+.claude/
+
+# Desktop training / evaluation artifacts
+*.h5
+*.tflite
+*.pkl
+*.npz
+*.png
+threshold_search_results.csv
+posture_classification_results.csv
+
+# Python-side experiment scripts kept outside firmware project
+analyze_model_performance.py
+check_distribution.py
+convert_model_for_cubemx.py
+optimize_person_detection.py
+parse_sensor_data.py
+prepare_for_xcubeai.py
+retrain_with_vertical_shift_augmentation.py
+test_posture_NEW.py
+test_posture_classification.py
+test_threshold_optimization.py
+train_ml_person_detection.py
+verify_results.py
