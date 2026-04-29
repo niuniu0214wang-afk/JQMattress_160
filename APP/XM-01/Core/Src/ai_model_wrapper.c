@@ -11,7 +11,6 @@
 #include "ai_model_wrapper.h"
 #include "../../X-CUBE-AI-NEW/App/network.h"       /* X-CUBE-AI生成的模型头文件 (2026-04-07) */
 #include "../../X-CUBE-AI-NEW/App/network_data.h"  /* X-CUBE-AI生成的权重数据 (2026-04-07) */
-#include <string.h>
 
 /* AI模型句柄 (2026-04-07) */
 static ai_handle network_handle = AI_HANDLE_NULL;
@@ -20,7 +19,7 @@ static ai_handle network_handle = AI_HANDLE_NULL;
 AI_ALIGNED(32) static ai_u8 activations[AI_NETWORK_DATA_ACTIVATIONS_SIZE];
 
 /* 输入缓冲区: uint8 260字节，模型训练时输入类型为tf.uint8 (2026-04-07) */
-AI_ALIGNED(4) static ai_u8 in_data[AI_NETWORK_IN_1_SIZE_BYTES];
+AI_ALIGNED(4) static ai_float in_data[AI_NETWORK_IN_1_SIZE];
 
 /* 输出缓冲区: float32 1个值（侧卧概率） (2026-04-07) */
 AI_ALIGNED(4) static ai_float out_data[AI_NETWORK_OUT_1_SIZE];
@@ -66,14 +65,28 @@ uint8_t ai_model_classify(const uint8_t* sensor_data, float* probability)
     ai_i32 batch;
     ai_buffer *ai_input;
     ai_buffer *ai_output;
+    uint16_t max_value = 0;
+    uint16_t i;
 
     /* 检查模型是否已初始化 (2026-04-07) */
-    if (!ai_initialized || network_handle == AI_HANDLE_NULL) {
+    if (!sensor_data || !ai_initialized || network_handle == AI_HANDLE_NULL) {
         return 0;
     }
 
     /* 复制输入数据（uint8，260字节） (2026-04-07) */
-    memcpy(in_data, sensor_data, AI_NETWORK_IN_1_SIZE_BYTES);
+    for (i = 0; i < AI_NETWORK_IN_1_SIZE; ++i) {
+        if (sensor_data[i] > max_value) {
+            max_value = sensor_data[i];
+        }
+    }
+
+    if (max_value == 0U) {
+        max_value = 1U;
+    }
+
+    for (i = 0; i < AI_NETWORK_IN_1_SIZE; ++i) {
+        in_data[i] = (ai_float)sensor_data[i] / (ai_float)max_value;
+    }
 
     /* 获取输入输出缓冲区 (2026-04-07) */
     ai_input  = ai_network_inputs_get(network_handle, NULL);

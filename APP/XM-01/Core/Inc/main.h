@@ -28,27 +28,39 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
-#include "SEGGER_RTT.h"
-#include "rtthread.h"
-#include "dma.h"
-#include "usart.h"
-#include "gpio.h"
-#include "myEdge_ai_app.h"
-#include <ctype.h>
 
-#define SENSOR_RX_BUFFER_SIZE  2048
-#define OUTPUT_RX_BUFFER_SIZE  (2048 + 128)  // 增大缓冲区以支持OTA协议 (2025-09-02)
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 
-extern uint16_t sensor_uart_rx_len;
-extern uint8_t sensor_uart_rx_buffer[SENSOR_RX_BUFFER_SIZE]; 
-extern uint16_t output_uart_rx_len;
-extern uint8_t output_uart_rx_buffer[OUTPUT_RX_BUFFER_SIZE];  
-extern char Project_Version[16];
+/* USER CODE END Includes */
+
+/* Exported types ------------------------------------------------------------*/
+/* USER CODE BEGIN ET */
+
+/* USER CODE END ET */
+
+/* Exported constants --------------------------------------------------------*/
+/* USER CODE BEGIN EC */
+
+/* USER CODE END EC */
+
+/* Exported macro ------------------------------------------------------------*/
+/* USER CODE BEGIN EM */
+
+/* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-extern void Error_Handler(void);
-extern void hex_dump(const void *data, size_t size);
-extern void hex_dump_simple(const void *data, size_t size);
+void Error_Handler(void);
+
+/* USER CODE BEGIN EFP */
+
+/* USER CODE END EFP */
+
+/* Private defines -----------------------------------------------------------*/
+
+/* USER CODE BEGIN Private defines */
+
+/* USER CODE END Private defines */
 
 #ifdef __cplusplus
 }

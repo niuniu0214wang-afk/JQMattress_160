@@ -1138,9 +1138,6 @@ HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *huart, const uint8_t *pD
   const uint16_t *pdata16bits;
   uint32_t tickstart = 0U;
 
-//  rt_kprintf("send data:");
-//  hex_dump_simple(pData, Size);
-
   /* Check that a Tx process is not already ongoing */
   if (huart->gState == HAL_UART_STATE_READY)
   {

@@ -22,7 +22,7 @@ extern "C" {
 #define AI_POSTURE_SIDE        2   // 侧卧
 
 // 最优阈值（从训练脚本获取）(2026-03-03)
-#define AI_OPTIMAL_THRESHOLD   0.32f
+#define AI_OPTIMAL_THRESHOLD   0.05f
 
 /**
  * @brief 初始化AI模型

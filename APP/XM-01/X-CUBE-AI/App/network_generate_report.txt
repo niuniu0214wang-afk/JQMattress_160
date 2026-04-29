@@ -1,0 +1,229 @@
+ST Edge AI Core v2.2.0-20266 2adc00962
+Created date          : 2026-04-29 11:54:43
+Parameters            : generate --target stm32f4 --name network -m D:/Research Dev/JQ260/SleepPosture/0427/output_cnn_tiny/jq260_cnn_0427_tiny.tflite --compression none --verbosity 1 --workspace C:/Users/Lenovo/AppData/Local/Temp/mxAI_workspace66906436827740015558098956719617271 --output C:/Users/Lenovo/.stm32cubemx/network_output
+
+Exec/report summary (generate)
+--------------------------------------------------------------------------------------------------------------
+model file         :   D:\Research Dev\JQ260\SleepPosture\0427\output_cnn_tiny\jq260_cnn_0427_tiny.tflite     
+type               :   tflite                                                                                 
+c_name             :   network                                                                                
+compression        :   none                                                                                   
+options            :   allocate-inputs, allocate-outputs                                                      
+optimization       :   balanced                                                                               
+target/series      :   stm32f4                                                                                
+workspace dir      :   C:\Users\Lenovo\AppData\Local\Temp\mxAI_workspace66906436827740015558098956719617271   
+output dir         :   C:\Users\Lenovo\.stm32cubemx\network_output                                            
+model_fmt          :   float                                                                                  
+model_name         :   jq260_cnn_0427_tiny                                                                    
+model_hash         :   0xd2789daa4135c06ee77976fdf0eab300                                                     
+params #           :   5,145 items (20.10 KiB)                                                                
+--------------------------------------------------------------------------------------------------------------
+input 1/1          :   'x', f32(1x26x10x1), 1.02 KBytes, activations                                          
+output 1/1         :   'nl_8', f32(1x1), 4 Bytes, activations                                                 
+macc               :   142,107                                                                                
+weights (ro)       :   20,580 B (20.10 KiB) (1 segment)                                                       
+activations (rw)   :   3,708 B (3.62 KiB) (1 segment) *                                                       
+ram (total)        :   3,708 B (3.62 KiB) = 3,708 + 0 + 0                                                     
+--------------------------------------------------------------------------------------------------------------
+(*) 'input'/'output' buffers are allocated in the activations buffer
+
+Model name - jq260_cnn_0427_tiny
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+m_id   layer (type,original)                     oshape                param/size         macc        connected to   | c_size             c_macc               c_type                       
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+0      x (Input, )                               [b:1,h:26,w:10,c:1]                                                 |                                         
+       conv2d_0 (Conv2D, CONV_2D)                [b:1,h:26,w:10,c:8]   80/320           18,728                   x   | -320(-100.0%)      -18,728(-100.0%)     
+       nl_0_nl (Nonlinearity, CONV_2D)           [b:1,h:26,w:10,c:8]                     2,080            conv2d_0   |                    -2,080(-100.0%)      
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+1      pool_1 (Pool, MAX_POOL_2D)                [b:1,h:13,w:5,c:8]                      2,080             nl_0_nl   | +320(+100.0%)      +20,808(+1000.4%)    Conv2D_[0]                   
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+2      conv2d_2 (Conv2D, CONV_2D)                [b:1,h:13,w:5,c:16]   1,168/4,672      74,896              pool_1   | -4,672(-100.0%)    -74,896(-100.0%)     
+       nl_2_nl (Nonlinearity, CONV_2D)           [b:1,h:13,w:5,c:16]                     1,040            conv2d_2   |                    -1,040(-100.0%)      
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+3      pool_3 (Pool, MAX_POOL_2D)                [b:1,h:6,w:2,c:16]                        768             nl_2_nl   | +4,672(+100.0%)    +75,936(+9887.5%)    Conv2D_[1]                   
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+4      conv2d_4 (Conv2D, CONV_2D)                [b:1,h:6,w:2,c:24]    3,480/13,920     41,496              pool_3   | -13,920(-100.0%)   -41,496(-100.0%)     
+       nl_4_nl (Nonlinearity, CONV_2D)           [b:1,h:6,w:2,c:24]                        288            conv2d_4   |                    -288(-100.0%)        
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+5      pool_5 (Pool, MEAN)                       [b:1,h:1,w:1,c:24]                        288             nl_4_nl   | +13,920(+100.0%)   +41,784(+14508.3%)   Conv2D_[2]                   
+       reshape_5_reshape (Reshape, MEAN)         [b:1,c:24]                                                 pool_5   |                                         
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+6      arith_constant5 (Placeholder, )           [b:16,c:24]           384/1,536                                     | +64(+4.2%)         +416(+100.0%)        Dense_/Nonlinearity_[3, 4]   
+       arith_constant8 (Placeholder, )           [b:16]                16/64                                         | -64(-100.0%)                            
+       gemm_6 (Gemm, FULLY_CONNECTED)            [b:1,c:16]                                400   reshape_5_reshape   |                    -400(-100.0%)        
+                                                                                                   arith_constant5   | 
+                                                                                                   arith_constant8   | 
+       nl_6_nl (Nonlinearity, FULLY_CONNECTED)   [b:1,c:16]                                 16              gemm_6   |                    -16(-100.0%)         
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+7      arith_constant4 (Placeholder, )           [b:1,c:16]            16/64                                         | +4(+6.2%)          +17(+100.0%)         Dense_[5]                    
+       arith_constant7 (Placeholder, )           [b:1]                 1/4                                           | -4(-100.0%)                             
+       gemm_7 (Gemm, FULLY_CONNECTED)            [b:1,c:1]                                  17             nl_6_nl   |                    -17(-100.0%)         
+                                                                                                   arith_constant4   | 
+                                                                                                   arith_constant7   | 
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+8      nl_8 (Nonlinearity, LOGISTIC)             [b:1,c:1]                                  10              gemm_7   |                                         Nonlinearity_[o][6]          
+------ ----------------------------------------- --------------------- -------------- -------- ------------------- --- ------------------ -------------------- ---------------------------- 
+model/c-model: macc=142,107/142,107  weights=20,580/20,580  activations=--/3,708 io=--/0
+
+
+
+Generated C-graph summary
+------------------------------------------------------------------------------------------------------------------------
+model name            : jq260_cnn_0427_tiny
+c-name                : network
+c-node #              : 7
+c-array #             : 24
+activations size      : 3708 (1 segment)
+weights size          : 20580 (1 segment)
+macc                  : 142107
+inputs                : ['x_output']
+outputs               : ['nl_8_output']
+
+C-Arrays (24)
+------ ------------------- ------------ ------------------------- ------------- --------- 
+c_id   name (*_array)      item/size    domain/mem-pool           c-type        comment   
+------ ------------------- ------------ ------------------------- ------------- --------- 
+0      conv2d_0_bias       8/32         weights/weights           const float             
+1      conv2d_0_output     520/2080     activations/**default**   float                   
+2      conv2d_0_scratch0   9/36         activations/**default**   float                   
+3      conv2d_0_scratch1   160/640      activations/**default**   float                   
+4      conv2d_0_weights    72/288       weights/weights           const float             
+5      conv2d_2_bias       16/64        weights/weights           const float             
+6      conv2d_2_output     192/768      activations/**default**   float                   
+7      conv2d_2_scratch0   72/288       activations/**default**   float                   
+8      conv2d_2_scratch1   160/640      activations/**default**   float                   
+9      conv2d_2_weights    1152/4608    weights/weights           const float             
+10     conv2d_4_bias       24/96        weights/weights           const float             
+11     conv2d_4_output     24/96        activations/**default**   float                   
+12     conv2d_4_scratch0   144/576      activations/**default**   float                   
+13     conv2d_4_scratch1   288/1152     activations/**default**   float                   
+14     conv2d_4_weights    3456/13824   weights/weights           const float             
+15     gemm_6_bias         16/64        weights/weights           const float             
+16     gemm_6_output       16/64        activations/**default**   float                   
+17     gemm_6_weights      384/1536     weights/weights           const float             
+18     gemm_7_bias         1/4          weights/weights           const float             
+19     gemm_7_output       1/4          activations/**default**   float                   
+20     gemm_7_weights      16/64        weights/weights           const float             
+21     nl_6_nl_output      16/64        activations/**default**   float                   
+22     nl_8_output         1/4          activations/**default**   float         /output   
+23     x_output            260/1040     activations/**default**   float         /input    
+------ ------------------- ------------ ------------------------- ------------- --------- 
+
+C-Layers (7)
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+c_id   name (*_layer)   id   layer_type      macc    rom     tensors                shape (array id)      
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+0      conv2d_0         1    Conv2D          22888   320     I: x_output            f32(1x26x10x1) (23)   
+                                                             S: conv2d_0_scratch0                         
+                                                             S: conv2d_0_scratch1                         
+                                                             W: conv2d_0_weights    f32(8x3x3x1) (4)      
+                                                             W: conv2d_0_bias       f32(8) (0)            
+                                                             O: conv2d_0_output     f32(1x13x5x8) (1)     
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+1      conv2d_2         3    Conv2D          76704   4672    I: conv2d_0_output     f32(1x13x5x8) (1)     
+                                                             S: conv2d_2_scratch0                         
+                                                             S: conv2d_2_scratch1                         
+                                                             W: conv2d_2_weights    f32(16x3x3x8) (9)     
+                                                             W: conv2d_2_bias       f32(16) (5)           
+                                                             O: conv2d_2_output     f32(1x6x2x16) (6)     
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+2      conv2d_4         5    Conv2D          42072   13920   I: conv2d_2_output     f32(1x6x2x16) (6)     
+                                                             S: conv2d_4_scratch0                         
+                                                             S: conv2d_4_scratch1                         
+                                                             W: conv2d_4_weights    f32(24x3x3x16) (14)   
+                                                             W: conv2d_4_bias       f32(24) (10)          
+                                                             O: conv2d_4_output     f32(1x1x1x24) (11)    
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+3      gemm_6           6    Dense           400     1600    I: conv2d_4_output     f32(1x1x1x24) (11)    
+                                                             W: gemm_6_weights      f32(16x24) (17)       
+                                                             W: gemm_6_bias         f32(16) (15)          
+                                                             O: gemm_6_output       f32(1x16) (16)        
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+4      nl_6_nl          6    Nonlinearity    16      0       I: gemm_6_output       f32(1x16) (16)        
+                                                             O: nl_6_nl_output      f32(1x16) (21)        
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+5      gemm_7           7    Dense           17      68      I: nl_6_nl_output      f32(1x16) (21)        
+                                                             W: gemm_7_weights      f32(1x16) (20)        
+                                                             W: gemm_7_bias         f32(1) (18)           
+                                                             O: gemm_7_output       f32(1x1) (19)         
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+6      nl_8             8    Nonlinearity    10      0       I: gemm_7_output       f32(1x1) (19)         
+                                                             O: nl_8_output         f32(1x1) (22)         
+------ ---------------- ---- --------------- ------- ------- ---------------------- --------------------- 
+
+
+
+Number of operations per c-layer
+------- ------ ------------------------ --------- -------------- 
+c_id    m_id   name (type)                    #op           type 
+------- ------ ------------------------ --------- -------------- 
+0       1      conv2d_0 (Conv2D)           22,888   smul_f32_f32 
+1       3      conv2d_2 (Conv2D)           76,704   smul_f32_f32 
+2       5      conv2d_4 (Conv2D)           42,072   smul_f32_f32 
+3       6      gemm_6 (Dense)                 400   smul_f32_f32 
+4       6      nl_6_nl (Nonlinearity)          16     op_f32_f32 
+5       7      gemm_7 (Dense)                  17   smul_f32_f32 
+6       8      nl_8 (Nonlinearity)             10     op_f32_f32 
+------- ------ ------------------------ --------- -------------- 
+total                                     142,107 
+
+Number of operation types
+---------------- --------- ----------- 
+operation type           #           % 
+---------------- --------- ----------- 
+smul_f32_f32       142,081      100.0% 
+op_f32_f32              26        0.0% 
+
+Complexity report (model)
+------ ----------------- ------------------------- ------------------------- -------- 
+m_id   name              c_macc                    c_rom                     c_id     
+------ ----------------- ------------------------- ------------------------- -------- 
+1      pool_1            |||||             16.1%   |                  1.6%   [0]      
+3      pool_3            ||||||||||||||||  54.0%   ||||||            22.7%   [1]      
+5      pool_5            |||||||||         29.6%   ||||||||||||||||  67.6%   [2]      
+6      arith_constant5   |                  0.3%   ||                 7.8%   [3, 4]   
+7      arith_constant4   |                  0.0%   |                  0.3%   [5]      
+8      nl_8              |                  0.0%   |                  0.0%   [6]      
+------ ----------------- ------------------------- ------------------------- -------- 
+macc=142,107 weights=20,580 act=3,708 ram_io=0
+ 
+ Requested memory size by section - "stm32f4" target
+ ------------------------------ -------- -------- ------- ------- 
+ module                             text   rodata    data     bss 
+ ------------------------------ -------- -------- ------- ------- 
+ NetworkRuntime1020_CM4_GCC.a     11,872        0       0       0 
+ network.o                           740       56   2,968     184 
+ network_data.o                       48       16      88       0 
+ lib (toolchain)*                    614       24       0       0 
+ ------------------------------ -------- -------- ------- ------- 
+ RT total**                       13,274       96   3,056     184 
+ ------------------------------ -------- -------- ------- ------- 
+ weights                               0   20,584       0       0 
+ activations                           0        0       0   3,708 
+ io                                    0        0       0       0 
+ ------------------------------ -------- -------- ------- ------- 
+ TOTAL                            13,274   20,680   3,056   3,892 
+ ------------------------------ -------- -------- ------- ------- 
+ *  toolchain objects (libm/libgcc*)
+ ** RT AI runtime objects (kernels+infrastructure)
+  
+  Summary - "stm32f4" target
+  ---------------------------------------------------
+               FLASH (ro)      %*   RAM (rw)       % 
+  ---------------------------------------------------
+  RT total         16,426   44.4%      3,240   46.6% 
+  ---------------------------------------------------
+  TOTAL            37,010              6,948         
+  ---------------------------------------------------
+  *  rt/total
+
+
+Generated files (7)
+------------------------------------------------------------------- 
+C:\Users\Lenovo\.stm32cubemx\network_output\network_data_params.h   
+C:\Users\Lenovo\.stm32cubemx\network_output\network_data_params.c   
+C:\Users\Lenovo\.stm32cubemx\network_output\network_data.h          
+C:\Users\Lenovo\.stm32cubemx\network_output\network_data.c          
+C:\Users\Lenovo\.stm32cubemx\network_output\network_config.h        
+C:\Users\Lenovo\.stm32cubemx\network_output\network.h               
+C:\Users\Lenovo\.stm32cubemx\network_output\network.c               
