@@ -1,8 +1,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "ai_model_wrapper.h"  // X-CUBE-AI睡姿分类模型包装 (2026-03-03)
+#include "posture_classifier.h"  /* 随机森林姿态分类器，无需初始化 (2026-05-06) */
 
-char Project_Version[16] = "V1.3.2"; // 算法滤波更新 (2026-05-06)
+char Project_Version[16] = "V1.0.1"; // 算法滤波更新 (2026-05-06)
 unsigned short sensor_uart_rx_len = 0;
 unsigned char sensor_uart_rx_buffer[SENSOR_RX_BUFFER_SIZE]; // DMA搬运目标缓存
 unsigned short output_uart_rx_len = 0;
@@ -31,7 +31,7 @@ int main(void)
     MX_USART3_UART_Init();
     SEGGER_RTT_Init();
     // cnn_posture_init();  // 旧的手写CNN初始化 (2025-12-22)
-    ai_wrapper_init();        // 睡姿分类模型初始化 (2026-04-07)
+    /* posture_classifier 无需初始化，RF模型权重存于Flash (2026-05-06) */
 //    MX_X_CUBE_AI_Init();
     /* USER CODE BEGIN 2 */
 
