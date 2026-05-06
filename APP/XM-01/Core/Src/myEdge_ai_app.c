@@ -50,9 +50,9 @@ static uint8_t s_vote_buf_lower[PERSON_VOTE_WINDOW];
 static uint8_t s_vote_index = 0;
 
 /* 睡姿EMA平滑状态 (2026-05-06) */
-/* 三分类：ema[0]=仰卧, ema[1]=左侧卧, ema[2]=右侧卧 (2026-05-06) */
-static float   s_posture_ema_0[3]     = {0.0f, 0.0f, 0.0f};
-static float   s_posture_ema_1[3]     = {0.0f, 0.0f, 0.0f};
+/* 四分类：ema[0]=仰卧, ema[1]=左侧卧, ema[2]=右侧卧, ema[3]=坐起 (2026-05-06) */
+static float   s_posture_ema_0[4]     = {0.0f, 0.0f, 0.0f, 0.0f};
+static float   s_posture_ema_1[4]     = {0.0f, 0.0f, 0.0f, 0.0f};
 static uint8_t s_posture_pending_0    = 0xFF;
 static uint8_t s_posture_pending_1    = 0xFF;
 static uint8_t s_posture_stable_cnt_0 = 0;
@@ -63,6 +63,8 @@ static uint8_t s_prev_lower_person    = 0;
 uint8_t g_person_count = 0;
 uint8_t g_posture_0 = 0xFF;
 uint8_t g_posture_1 = 0xFF;
+uint8_t g_bed_exit_0 = 1;   /* 初始状态：无人（离床）(2026-05-06) */
+uint8_t g_bed_exit_1 = 1;   /* 初始状态：无人（离床）(2026-05-06) */
 
 model_t model;
 
@@ -148,7 +150,7 @@ uint16_t count_nonzero_in_lower_half(const uint8_t *input_data)
 
 static void reset_posture_ema(float *ema, uint8_t *pending, uint8_t *stable_cnt)
 {
-    ema[0] = ema[1] = ema[2] = 0.0f;
+    ema[0] = ema[1] = ema[2] = ema[3] = 0.0f;  /* 四分类 EMA 全部清零 (2026-05-06) */
     *pending    = 0xFF;
     *stable_cnt = 0;
 }
@@ -331,6 +333,9 @@ static void ai_thread_entry(void *parameter)
             g_person_count = s_person_count;
             g_posture_0    = s_posture_0;
             g_posture_1    = s_posture_1;
+            /* 离床状态：无人=1，有人=0 (2026-05-06) */
+            g_bed_exit_0   = s_prev_lower_person ? 0 : 1;
+            g_bed_exit_1   = s_prev_upper_person ? 0 : 1;
             /* 呼吸率和心率：有人时输出，无人或运动时输出 0xFF (2026-05-06) */
             {
                 float bpm0 = breath_get_bpm(&g_breath_lower);

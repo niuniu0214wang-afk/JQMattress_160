@@ -166,16 +166,16 @@ static void upload_StatusPackage(void)
     payload[4] = g_posture_0;      /* 睡姿 */
     payload[5] = g_breath_rate_0;  /* 呼吸率 bpm，0xFF=无效 */
     payload[6] = g_heart_rate_0;   /* 心率 bpm，0xFF=无效 (2026-05-06) */
-    payload[7] = 0xFF;             /* 离床状态：本项目未实现 */
-    payload[8] = 0xFF;             /* 起身状态：本项目未实现 */
+    payload[7] = g_bed_exit_0;     /* 离床状态：1=已离床，0=在床 (2026-05-06) */
+    payload[8] = (g_bed_exit_0 == 0) ? (g_posture_0 == POSTURE_SITTING ? 1 : 0) : 0xFF; /* 起身状态 (2026-05-06) */
     rt_memset(payload + 9, 0xFF, 6);  /* 气囊：本项目未实现 */
 
     /* 右床数据（payload[15..25]）(2026-05-06) */
     payload[15] = g_posture_1;     /* 睡姿 */
     payload[16] = g_breath_rate_1; /* 呼吸率 bpm，0xFF=无效 */
     payload[17] = g_heart_rate_1;  /* 心率 bpm，0xFF=无效 (2026-05-06) */
-    payload[18] = 0xFF;            /* 离床状态：本项目未实现 */
-    payload[19] = 0xFF;            /* 起身状态：本项目未实现 */
+    payload[18] = g_bed_exit_1;    /* 离床状态：1=已离床，0=在床 (2026-05-06) */
+    payload[19] = (g_bed_exit_1 == 0) ? (g_posture_1 == POSTURE_SITTING ? 1 : 0) : 0xFF; /* 起身状态 (2026-05-06) */
     rt_memset(payload + 20, 0xFF, 6); /* 气囊：本项目未实现 */
 
     output_frame_ctrl |= FRAME_CTL_CRC_EN;
@@ -477,15 +477,15 @@ static void comm_state_machine_run(void)
             payload[4] = g_posture_0;
             payload[5] = g_breath_rate_0;
             payload[6] = 0xFF;
-            payload[7] = 0xFF;
-            payload[8] = 0xFF;
+            payload[7] = g_bed_exit_0;     /* 离床状态：1=已离床，0=在床 (2026-05-06) */
+            payload[8] = (g_bed_exit_0 == 0) ? (g_posture_0 == POSTURE_SITTING ? 1 : 0) : 0xFF; /* 起身状态 (2026-05-06) */
             rt_memset(payload + 9, 0xFF, 6);
 
             payload[15] = g_posture_1;
             payload[16] = g_breath_rate_1;
             payload[17] = 0xFF;
-            payload[18] = 0xFF;
-            payload[19] = 0xFF;
+            payload[18] = g_bed_exit_1;    /* 离床状态：1=已离床，0=在床 (2026-05-06) */
+            payload[19] = (g_bed_exit_1 == 0) ? (g_posture_1 == POSTURE_SITTING ? 1 : 0) : 0xFF; /* 起身状态 (2026-05-06) */
             rt_memset(payload + 20, 0xFF, 6);
 
             if (rx_frame.need_ack)

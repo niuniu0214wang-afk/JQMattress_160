@@ -8,6 +8,12 @@
 #include <string.h>
 #include <math.h>
 
+/* ── 前向声明（函数定义在 br_analyze 之后）(2026-05-06) ────── */
+static uint8_t br_has_motion(const BreathAnalyzer *ba);
+static void    br_fuse_body_signal(const BreathAnalyzer *ba, float *out_sig, float *out_total_load);
+static void    br_compute_heart_rate(const float *body_sig, float br_bpm,
+                                     float *out_hr_bpm, float *out_snr);
+
 /* ── 呼吸带 Butterworth 4阶带通 SOS 系数 ─────────────────────
  * butter(4, [0.1/6.5, 0.5/6.5], btype='band', output='sos')
  * fs=13 Hz, lo=0.1 Hz, hi=0.5 Hz
