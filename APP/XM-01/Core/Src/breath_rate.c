@@ -61,7 +61,7 @@ static const float s_hr_sos_a[HR_SOS_SECTIONS][2] = {
  * 呼吸带 [0.1, 0.5] Hz → bin [16, 81]
  * (2026-05-06)
  */
-#define BR_FFT_OUT  (BR_FFT_NFFT / 2 + 1)  /* 1025 */
+#define BR_FFT_OUT  (BR_FFT_NFFT / 2 + 1)  /* 257 @ 512点 */
 
 /* 追踪参数（与 Python 一致）(2026-05-06) */
 #define BR_TRACK_DELTA_PENALTY   0.18f
@@ -78,18 +78,16 @@ static const float s_hr_sos_a[HR_SOS_SECTIONS][2] = {
 
 /* ── 工作缓冲区（静态，避免栈溢出）────────────────────────── */
 static float s_roi_sig[BR_N_WIN];        /* ROI 融合信号 390点 */
-static float s_filtered[BR_N_WIN];       /* 带通滤波后信号 */
-static float s_fft_buf[BR_FFT_NFFT];    /* FFT 输入（补零到2048）*/
-static float s_fft_re[BR_FFT_NFFT];     /* FFT 实部 */
+static float s_filtered[BR_N_WIN];       /* 带通滤波后信号（兼用作 hr 反向滤波缓冲）*/
+static float s_fft_re[BR_FFT_NFFT];     /* FFT 实部（兼用作输入缓冲，替代 s_fft_buf）*/
 static float s_fft_im[BR_FFT_NFFT];     /* FFT 虚部 */
-static float s_fft_mag[BR_FFT_OUT];     /* FFT 幅度谱 */
+static float s_fft_mag[BR_FFT_NFFT/2 + 1]; /* FFT 幅度谱 */
 static float s_mean_load[BR_HALF_SIZE]; /* 各通道平均负载 */
 static float s_weights[BR_HALF_SIZE];   /* ROI 权重 */
 
-/* 心率相关工作缓冲区（移至顶部，br_analyze 中使用）(2026-05-06) */
+/* 心率相关工作缓冲区 (2026-05-06) */
 static float s_body_sig[BR_N_WIN];
 static float s_hr_filtered[BR_N_WIN];
-static float s_hr_filtered_rev[BR_N_WIN];
 static float s_hr_sos_x[HR_SOS_SECTIONS][2];
 static float s_hr_sos_y[HR_SOS_SECTIONS][2];
 
@@ -241,33 +239,27 @@ static void br_sos_filter_forward(const float *in, float *out, int n)
 
 static void br_bandpass(float *sig, int n)
 {
-    /* 前向滤波 (2026-05-06) */
+    /* 前向滤波（结果存入 s_filtered）(2026-05-06) */
     br_sos_filter_forward(sig, s_filtered, n);
 
-    /* 后向滤波（时间反转）(2026-05-06) */
+    /* 后向滤波：复用 s_roi_sig 和 s_body_sig 作为临时缓冲，节省栈空间 (2026-05-06) */
     int i;
-    float rev[BR_N_WIN];
-    for (i = 0; i < n; i++) rev[i] = s_filtered[n - 1 - i];
-
-    float rev_out[BR_N_WIN];
-    br_sos_filter_forward(rev, rev_out, n);
-
-    for (i = 0; i < n; i++) s_filtered[i] = rev_out[n - 1 - i];
+    for (i = 0; i < n; i++) s_roi_sig[i] = s_filtered[n - 1 - i];
+    br_sos_filter_forward(s_roi_sig, s_body_sig, n);
+    for (i = 0; i < n; i++) s_filtered[i] = s_body_sig[n - 1 - i];
 }
 
 /* ── Cooley-Tukey 迭代 FFT（实数输入）───────────────────────
- * 输入：s_fft_buf[0..N-1]（实数，已补零）
+ * 输入：s_fft_re[0..N-1]（实数，已补零）
  * 输出：s_fft_re[], s_fft_im[]，然后计算 s_fft_mag[]
  * (2026-05-06)
  */
 static void br_fft(int n)
 {
     int i, j, k, m;
-    /* 位反转排列 (2026-05-06) */
-    for (i = 0; i < n; i++) {
-        s_fft_re[i] = s_fft_buf[i];
+    /* 位反转排列：s_fft_re 已包含输入数据，虚部清零 (2026-05-06) */
+    for (i = 0; i < n; i++)
         s_fft_im[i] = 0.0f;
-    }
     j = 0;
     for (i = 1; i < n; i++) {
         int bit = n >> 1;
@@ -552,10 +544,10 @@ static void br_analyze(BreathAnalyzer *ba)
     br_bandpass(s_filtered, BR_N_WIN);
 
     /* 6. Hamming 窗 + 补零 + FFT (2026-05-06) */
-    memset(s_fft_buf, 0, sizeof(s_fft_buf));
+    memset(s_fft_re, 0, sizeof(s_fft_re));
     for (i = 0; i < BR_N_WIN; i++) {
         float w = 0.54f - 0.46f * cosf(2.0f * 3.14159265f * (float)i / (float)(BR_N_WIN - 1));
-        s_fft_buf[i] = s_filtered[i] * w;
+        s_fft_re[i] = s_filtered[i] * w;
     }
     br_fft(BR_FFT_NFFT);
 
@@ -699,11 +691,11 @@ static void br_hr_filter_forward(const float *in, float *out, int n)
 static void br_hr_bandpass(float *sig, int n)
 {
     int i;
+    /* 复用 s_filtered 作为反向缓冲，s_roi_sig 作为输出缓冲，节省 RAM (2026-05-06) */
     br_hr_filter_forward(sig, s_hr_filtered, n);
-    for (i = 0; i < n; i++) s_hr_filtered_rev[i] = s_hr_filtered[n - 1 - i];
-    float rev_out[BR_N_WIN];
-    br_hr_filter_forward(s_hr_filtered_rev, rev_out, n);
-    for (i = 0; i < n; i++) sig[i] = rev_out[n - 1 - i];
+    for (i = 0; i < n; i++) s_filtered[i] = s_hr_filtered[n - 1 - i];
+    br_hr_filter_forward(s_filtered, s_roi_sig, n);
+    for (i = 0; i < n; i++) sig[i] = s_roi_sig[n - 1 - i];
 }
 
 /* ── 心率 FFT 峰值检测（PRQ 约束）───────────────────────────
@@ -721,8 +713,8 @@ static void br_compute_heart_rate(const float *body_sig, float br_bpm,
     br_hr_bandpass(s_body_sig, BR_N_WIN);
 
     /* FFT（复用呼吸率的 FFT 缓冲区）(2026-05-06) */
-    memset(s_fft_buf, 0, sizeof(s_fft_buf));
-    for (i = 0; i < BR_N_WIN; i++) s_fft_buf[i] = s_body_sig[i];
+    memset(s_fft_re, 0, sizeof(s_fft_re));
+    for (i = 0; i < BR_N_WIN; i++) s_fft_re[i] = s_body_sig[i];
     br_fft(BR_FFT_NFFT);
 
     /* PRQ 约束窗口：HR ∈ [RR×3.0, RR×6.0] (2026-05-06) */

@@ -19,7 +19,7 @@ extern "C" {
 #define BR_FS               13      /* 采样率 Hz (2026-05-06) */
 #define BR_WINDOW_SEC       30      /* 分析窗口秒数 (2026-05-06) */
 #define BR_N_WIN            (BR_FS * BR_WINDOW_SEC)  /* 390帧 */
-#define BR_FFT_NFFT         2048    /* FFT点数 (2026-05-06) */
+#define BR_FFT_NFFT         512     /* FFT点数：512点@13Hz分辨率≈1.5bpm，节省RAM (2026-05-06) */
 #define BR_HALF_SIZE        80      /* 单人半区点数 8×10 (2026-05-06) */
 #define BR_TRACK_HISTORY    6       /* 历史追踪窗口数 (2026-05-06) */
 #define BR_HOLD_MAX         2       /* 保持机制最大窗口数 (2026-05-06) */
