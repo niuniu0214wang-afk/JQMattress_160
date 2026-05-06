@@ -1,5 +1,6 @@
-/* breath_rate.c — STM32 呼吸率计算模块实现
+/* breath_rate.c — STM32 呼吸率 + 心率计算模块实现
  * 算法移植自 InDevelop/software/src/breath_signal_analyzer.py
+ *                  InDevelop/software/src/live_prediction.py
  * 无动态内存分配，所有缓冲区静态分配
  * (2026-05-06)
  */
@@ -7,11 +8,9 @@
 #include <string.h>
 #include <math.h>
 
-/* ── Butterworth 4阶带通滤波器 SOS 系数 ──────────────────────
+/* ── 呼吸带 Butterworth 4阶带通 SOS 系数 ─────────────────────
  * butter(4, [0.1/6.5, 0.5/6.5], btype='band', output='sos')
  * fs=13 Hz, lo=0.1 Hz, hi=0.5 Hz
- * 每节格式: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2]
- *                - a1*y[n-1] - a2*y[n-2]
  * (2026-05-06)
  */
 #define BR_SOS_SECTIONS 4
@@ -28,6 +27,26 @@ static const float s_sos_a[BR_SOS_SECTIONS][2] = {
     { -1.99060636f,  0.99924602f },
     { -1.97687016f,  0.99849279f },
     { -1.99060636f,  0.99849279f },
+};
+
+/* ── 心率带 Butterworth 4阶带通 SOS 系数 ─────────────────────
+ * butter(4, [0.8/6.5, 6.0/6.5], btype='band', output='sos')
+ * fs=13 Hz, lo=0.8 Hz, hi=6.0 Hz
+ * (2026-05-06)
+ */
+#define HR_SOS_SECTIONS 4
+
+static const float s_hr_sos_b[HR_SOS_SECTIONS][3] = {
+    { 0.08055953f,  0.0f, -0.08055953f },
+    { 0.08055953f,  0.0f, -0.08055953f },
+    { 1.0f,         0.0f, -1.0f        },
+    { 1.0f,         0.0f, -1.0f        },
+};
+static const float s_hr_sos_a[HR_SOS_SECTIONS][2] = {
+    { -0.55007024f,  0.83888094f },
+    { -1.05610888f,  0.83888094f },
+    { -0.55007024f,  0.67776188f },
+    { -1.05610888f,  0.67776188f },
 };
 
 /* ── FFT 配置 ────────────────────────────────────────────────
@@ -476,38 +495,48 @@ static float br_track(BreathAnalyzer *ba, BRResult *cur, float prior_bpm)
 static void br_analyze(BreathAnalyzer *ba)
 {
     int i;
+    float total_load;
 
-    /* 1. ROI 融合 (2026-05-06) */
+    /* 1. 有人检测（体动信号融合）(2026-05-06) */
+    br_fuse_body_signal(ba, s_body_sig, &total_load);
+    ba->present = (total_load >= PRESENCE_MIN) ? 1 : 0;
+    if (!ba->present) {
+        ba->result_valid = 1;
+        return;
+    }
+
+    /* 2. 运动检测 (2026-05-06) */
+    ba->motion = br_has_motion(ba);
+
+    /* 3. ROI 融合（呼吸率用）(2026-05-06) */
     br_compute_roi(ba);
 
-    /* 2. 线性去趋势 (2026-05-06) */
+    /* 4. 线性去趋势 (2026-05-06) */
     br_detrend(s_roi_sig, BR_N_WIN);
 
-    /* 3. 带通滤波（零相位）(2026-05-06) */
+    /* 5. 带通滤波（零相位）(2026-05-06) */
     memcpy(s_filtered, s_roi_sig, sizeof(float) * BR_N_WIN);
     br_bandpass(s_filtered, BR_N_WIN);
 
-    /* 4. Hamming 窗 + 补零到 FFT_NFFT (2026-05-06) */
+    /* 6. Hamming 窗 + 补零 + FFT (2026-05-06) */
     memset(s_fft_buf, 0, sizeof(s_fft_buf));
     for (i = 0; i < BR_N_WIN; i++) {
         float w = 0.54f - 0.46f * cosf(2.0f * 3.14159265f * (float)i / (float)(BR_N_WIN - 1));
         s_fft_buf[i] = s_filtered[i] * w;
     }
-
-    /* 5. FFT (2026-05-06) */
     br_fft(BR_FFT_NFFT);
 
-    /* 6. 峰值检测 (2026-05-06) */
+    /* 7. 呼吸率峰值检测 (2026-05-06) */
     BRResult cur;
     memset(&cur, 0, sizeof(cur));
-    float prev_bpm = ba->result_valid ? ba->result.bpm : 0.0f;
+    float prev_bpm = ba->result_valid ? ba->br_result.bpm : 0.0f;
     br_fft_peak(&cur, prev_bpm);
 
-    /* 7. 历史追踪 (2026-05-06) */
+    /* 8. 历史追踪 (2026-05-06) */
     float tracked_bpm = br_track(ba, &cur, ba->last_good_bpm);
     cur.track_bpm = tracked_bpm;
 
-    /* 8. 保持机制 (2026-05-06) */
+    /* 9. 保持机制 (2026-05-06) */
     if (cur.quality == BR_QUALITY_GOOD || cur.quality == BR_QUALITY_USABLE) {
         ba->last_good_bpm = tracked_bpm;
         ba->hold_count    = 0;
@@ -519,35 +548,225 @@ static void br_analyze(BreathAnalyzer *ba)
         cur.bpm = 0.0f;
     }
 
-    /* 9. 更新历史 (2026-05-06) */
+    /* 10. 卡尔曼平滑呼吸率 (2026-05-06) */
+    if (cur.bpm > 0.0f && !ba->motion) {
+        float prev_br = ba->br_result.bpm;
+        float br_smooth;
+        if (cur.snr >= BR_SNR_MIN) {
+            if (prev_br > 0.0f && br_fabsf(cur.bpm - prev_br) > 5.0f)
+                br_smooth = kalman_update(&ba->kalman_br, prev_br);
+            else
+                br_smooth = kalman_update(&ba->kalman_br, cur.bpm);
+        } else {
+            br_smooth = (prev_br > 0.0f) ? prev_br : cur.bpm;
+        }
+        cur.bpm = br_smooth;
+    }
+
+    /* 11. 更新历史 (2026-05-06) */
     ba->hist[ba->hist_head] = cur;
     ba->hist_head = (ba->hist_head + 1) % BR_TRACK_HISTORY;
     if (ba->hist_count < BR_TRACK_HISTORY) ba->hist_count++;
+    ba->br_result = cur;
 
-    /* 10. 写入结果 (2026-05-06) */
-    ba->result       = cur;
+    /* 12. 心率计算（运动时跳过）(2026-05-06) */
+    if (!ba->motion && cur.bpm > 0.0f) {
+        float hr_raw = 0.0f, hr_snr = 0.0f;
+        br_compute_heart_rate(s_body_sig, cur.bpm, &hr_raw, &hr_snr);
+        if (hr_raw > 0.0f)
+            ba->hr_bpm = kalman_update(&ba->kalman_hr, hr_raw);
+        ba->hr_snr = hr_snr;
+    }
+
     ba->result_valid = 1;
 }
 
 /* ── 公开接口实现 ─────────────────────────────────────────── */
 
+/* 卡尔曼滤波器初始化 (2026-05-06) */
+static void kalman_init(KalmanFilter *kf, float q, float r, float init_val, float init_p)
+{
+    kf->x = init_val;
+    kf->p = init_p;
+    kf->q = q;
+    kf->r = r;
+}
+
+/* 卡尔曼更新，返回平滑后的值 (2026-05-06) */
+static float kalman_update(KalmanFilter *kf, float z)
+{
+    float k;
+    kf->p += kf->q;
+    k      = kf->p / (kf->p + kf->r);
+    kf->x += k * (z - kf->x);
+    kf->p *= (1.0f - k);
+    return kf->x;
+}
+
+/* ── 运动检测 ────────────────────────────────────────────────
+ * 总载荷逐帧变化量超阈值 → 运动伪影
+ * 移植自 live_prediction.py has_motion() (2026-05-06)
+ */
+static uint8_t br_has_motion(const BreathAnalyzer *ba)
+{
+    float prev_load = 0.0f, max_delta = 0.0f;
+    int i, c;
+    for (i = 0; i < BR_N_WIN; i++) {
+        int idx = (ba->buf_head - BR_N_WIN + i + BR_N_WIN) % BR_N_WIN;
+        float load = 0.0f;
+        for (c = 0; c < BR_HALF_SIZE; c++) load += ba->buf[idx][c];
+        if (i > 0) {
+            float delta = load - prev_load;
+            if (delta < 0.0f) delta = -delta;
+            if (delta > max_delta) max_delta = delta;
+        }
+        prev_load = load;
+    }
+    return (max_delta > MOTION_DELTA_THRESH) ? 1 : 0;
+}
+
+/* ── 体动信号融合（心率用）────────────────────────────────────
+ * 按静态载荷加权求和 → 单路体动信号
+ * 移植自 live_prediction.py fuse_body_signal() (2026-05-06)
+ */
+static void br_fuse_body_signal(const BreathAnalyzer *ba, float *out_sig, float *out_total_load)
+{
+    int i, c;
+    float mean_load[BR_HALF_SIZE] = {0};
+    float total_load = 0.0f;
+
+    for (i = 0; i < BR_N_WIN; i++) {
+        int idx = (ba->buf_head - BR_N_WIN + i + BR_N_WIN) % BR_N_WIN;
+        for (c = 0; c < BR_HALF_SIZE; c++)
+            mean_load[c] += ba->buf[idx][c];
+    }
+    for (c = 0; c < BR_HALF_SIZE; c++) {
+        mean_load[c] /= (float)BR_N_WIN;
+        total_load += mean_load[c];
+    }
+    *out_total_load = total_load;
+
+    if (total_load <= 1e-6f) {
+        memset(out_sig, 0, sizeof(float) * BR_N_WIN);
+        return;
+    }
+
+    /* 加权求和 (2026-05-06) */
+    for (i = 0; i < BR_N_WIN; i++) {
+        int idx = (ba->buf_head - BR_N_WIN + i + BR_N_WIN) % BR_N_WIN;
+        float val = 0.0f;
+        for (c = 0; c < BR_HALF_SIZE; c++)
+            val += ba->buf[idx][c] * mean_load[c];
+        out_sig[i] = val / (total_load + 1e-9f);
+    }
+}
+
+/* ── 心率带 IIR 滤波（前向）────────────────────────────────── */
+static float s_hr_sos_x[HR_SOS_SECTIONS][2];
+static float s_hr_sos_y[HR_SOS_SECTIONS][2];
+static float s_hr_filtered[BR_N_WIN];
+static float s_hr_filtered_rev[BR_N_WIN];
+static float s_body_sig[BR_N_WIN];
+
+static void br_hr_filter_forward(const float *in, float *out, int n)
+{
+    int i, s;
+    memset(s_hr_sos_x, 0, sizeof(s_hr_sos_x));
+    memset(s_hr_sos_y, 0, sizeof(s_hr_sos_y));
+    for (i = 0; i < n; i++) {
+        float x = in[i];
+        for (s = 0; s < HR_SOS_SECTIONS; s++) {
+            float y = s_hr_sos_b[s][0] * x
+                    + s_hr_sos_b[s][1] * s_hr_sos_x[s][0]
+                    + s_hr_sos_b[s][2] * s_hr_sos_x[s][1]
+                    - s_hr_sos_a[s][0] * s_hr_sos_y[s][0]
+                    - s_hr_sos_a[s][1] * s_hr_sos_y[s][1];
+            s_hr_sos_x[s][1] = s_hr_sos_x[s][0]; s_hr_sos_x[s][0] = x;
+            s_hr_sos_y[s][1] = s_hr_sos_y[s][0]; s_hr_sos_y[s][0] = y;
+            x = y;
+        }
+        out[i] = x;
+    }
+}
+
+static void br_hr_bandpass(float *sig, int n)
+{
+    int i;
+    br_hr_filter_forward(sig, s_hr_filtered, n);
+    for (i = 0; i < n; i++) s_hr_filtered_rev[i] = s_hr_filtered[n - 1 - i];
+    float rev_out[BR_N_WIN];
+    br_hr_filter_forward(s_hr_filtered_rev, rev_out, n);
+    for (i = 0; i < n; i++) sig[i] = rev_out[n - 1 - i];
+}
+
+/* ── 心率 FFT 峰值检测（PRQ 约束）───────────────────────────
+ * 移植自 live_prediction.py compute_heart_rate() (2026-05-06)
+ */
+static void br_compute_heart_rate(const float *body_sig, float br_bpm,
+                                   float *out_hr_bpm, float *out_snr)
+{
+    int i;
+    float freq_res = (float)BR_FS / (float)BR_FFT_NFFT;
+
+    /* 去趋势 + 心率带滤波 (2026-05-06) */
+    memcpy(s_body_sig, body_sig, sizeof(float) * BR_N_WIN);
+    br_detrend(s_body_sig, BR_N_WIN);
+    br_hr_bandpass(s_body_sig, BR_N_WIN);
+
+    /* FFT（复用呼吸率的 FFT 缓冲区）(2026-05-06) */
+    memset(s_fft_buf, 0, sizeof(s_fft_buf));
+    for (i = 0; i < BR_N_WIN; i++) s_fft_buf[i] = s_body_sig[i];
+    br_fft(BR_FFT_NFFT);
+
+    /* PRQ 约束窗口：HR ∈ [RR×3.0, RR×6.0] (2026-05-06) */
+    float rr_hz = br_bpm / 60.0f;
+    float lo_hz = rr_hz * HR_PRQ_LO;
+    float hi_hz = rr_hz * HR_PRQ_HI;
+    if (lo_hz < HR_BAND_LO_HZ) lo_hz = HR_BAND_LO_HZ;
+    if (hi_hz > HR_BAND_HI_HZ) hi_hz = HR_BAND_HI_HZ;
+
+    int band_start = (int)(lo_hz / freq_res + 0.5f);
+    int band_end   = (int)(hi_hz / freq_res + 0.5f);
+    if (band_end >= BR_FFT_OUT) band_end = BR_FFT_OUT - 1;
+
+    /* 若 PRQ 窗口无效，回退到全心脏带 (2026-05-06) */
+    if (band_start >= band_end || br_bpm <= 0.0f) {
+        band_start = (int)(HR_FALLBACK_LO_HZ / freq_res + 0.5f);
+        band_end   = (int)(HR_FALLBACK_HI_HZ / freq_res + 0.5f);
+        if (band_end >= BR_FFT_OUT) band_end = BR_FFT_OUT - 1;
+    }
+    if (band_start >= band_end) { *out_hr_bpm = 0.0f; *out_snr = 0.0f; return; }
+
+    int band_n = band_end - band_start + 1;
+    float dom_mag = 0.0f, band_sum = 0.0f;
+    int dom_idx = 0;
+    for (i = 0; i < band_n; i++) {
+        float m = s_fft_mag[band_start + i];
+        band_sum += m;
+        if (m > dom_mag) { dom_mag = m; dom_idx = i; }
+    }
+    float band_mean = band_sum / (float)band_n;
+    *out_snr    = dom_mag / (band_mean + 1e-9f);
+    *out_hr_bpm = (float)(band_start + dom_idx) * freq_res * 60.0f;
+}
+
 void breath_analyzer_init(BreathAnalyzer *ba)
 {
     memset(ba, 0, sizeof(BreathAnalyzer));
+    /* 卡尔曼初始化：Q, R, init_val, init_p (2026-05-06) */
+    kalman_init(&ba->kalman_br, 0.5f,  4.0f,  15.0f, 9.0f);
+    kalman_init(&ba->kalman_hr, 2.0f, 16.0f,  65.0f, 25.0f);
 }
 
 void breath_analyzer_push(BreathAnalyzer *ba, const uint8_t *half80)
 {
     int c;
-    /* 写入环形缓冲 (2026-05-06) */
     for (c = 0; c < BR_HALF_SIZE; c++)
         ba->buf[ba->buf_head][c] = (float)half80[c];
     ba->buf_head = (ba->buf_head + 1) % BR_N_WIN;
     if (ba->buf_count < BR_N_WIN) ba->buf_count++;
 
     ba->frame_cnt++;
-
-    /* 每 BR_FS 帧（每秒）触发一次分析，且缓冲已满 (2026-05-06) */
     if (ba->buf_count >= BR_N_WIN && ba->frame_cnt % BR_FS == 0)
         br_analyze(ba);
 }

@@ -165,7 +165,7 @@ static void upload_StatusPackage(void)
     /* 左床数据（payload[4..14]）(2026-05-06) */
     payload[4] = g_posture_0;      /* 睡姿 */
     payload[5] = g_breath_rate_0;  /* 呼吸率 bpm，0xFF=无效 */
-    payload[6] = 0xFF;             /* 心率：本项目未实现 */
+    payload[6] = g_heart_rate_0;   /* 心率 bpm，0xFF=无效 (2026-05-06) */
     payload[7] = 0xFF;             /* 离床状态：本项目未实现 */
     payload[8] = 0xFF;             /* 起身状态：本项目未实现 */
     rt_memset(payload + 9, 0xFF, 6);  /* 气囊：本项目未实现 */
@@ -173,7 +173,7 @@ static void upload_StatusPackage(void)
     /* 右床数据（payload[15..25]）(2026-05-06) */
     payload[15] = g_posture_1;     /* 睡姿 */
     payload[16] = g_breath_rate_1; /* 呼吸率 bpm，0xFF=无效 */
-    payload[17] = 0xFF;            /* 心率：本项目未实现 */
+    payload[17] = g_heart_rate_1;  /* 心率 bpm，0xFF=无效 (2026-05-06) */
     payload[18] = 0xFF;            /* 离床状态：本项目未实现 */
     payload[19] = 0xFF;            /* 起身状态：本项目未实现 */
     rt_memset(payload + 20, 0xFF, 6); /* 气囊：本项目未实现 */

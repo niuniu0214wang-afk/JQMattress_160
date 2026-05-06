@@ -1,6 +1,7 @@
-/* breath_rate.h — STM32 呼吸率计算模块头文件
+/* breath_rate.h — STM32 呼吸率 + 心率计算模块头文件
  * 算法移植自 InDevelop/software/src/breath_signal_analyzer.py
- * 流程：ROI融合 → 线性去趋势 → 带通滤波 → FFT峰值检测 → 历史追踪
+ *                  InDevelop/software/src/live_prediction.py
+ * 流程：ROI融合 → 去趋势 → 带通滤波 → FFT → 历史追踪 + 卡尔曼平滑
  * 采样率：13 Hz，分析窗口：30 s（390帧），FFT：2048点
  * (2026-05-06)
  */
@@ -27,11 +28,23 @@ extern "C" {
 /* 呼吸率有效范围 6–30 bpm = 0.1–0.5 Hz (2026-05-06) */
 #define BR_LO_HZ            0.1f
 #define BR_HI_HZ            0.5f
-#define BR_LO_BPM           6.0f
-#define BR_HI_BPM           30.0f
+
+/* 心率参数（BCG，移植自 live_prediction.py）(2026-05-06) */
+#define HR_BAND_LO_HZ       0.8f    /* 心率带下限 Hz */
+#define HR_BAND_HI_HZ       6.0f    /* 心率带上限 Hz（Nyquist=6.5 Hz）*/
+#define HR_PRQ_LO           3.0f    /* PRQ约束下限：HR >= RR × 3.0 */
+#define HR_PRQ_HI           6.0f    /* PRQ约束上限：HR <= RR × 6.0 */
+#define HR_FALLBACK_LO_HZ   0.8f    /* PRQ无效时回退范围下限 */
+#define HR_FALLBACK_HI_HZ   3.0f    /* PRQ无效时回退范围上限 */
+
+/* 运动检测阈值（总载荷逐帧变化量，需按硬件校准）(2026-05-06) */
+#define MOTION_DELTA_THRESH 200.0f
+
+/* 有人检测最小总压力（80点之和）(2026-05-06) */
+#define PRESENCE_MIN        250.0f
 
 /* SNR 阈值 (2026-05-06) */
-#define BR_SNR_MIN          1.5f
+#define BR_SNR_MIN          3.0f    /* 与 live_prediction.py BREATH_SNR_MIN 一致 */
 #define BR_SNR_GOOD         2.2f
 
 /* 质量分类 (2026-05-06) */
@@ -44,59 +57,76 @@ typedef enum {
 
 /* 单个候选峰 (2026-05-06) */
 typedef struct {
-    float freq;   /* Hz */
+    float freq;
     float bpm;
     float amp;
 } BRCandidate;
 
-/* 单次分析结果 (2026-05-06) */
+/* 单次呼吸率分析结果 (2026-05-06) */
 typedef struct {
-    float         bpm;          /* 最终输出 BPM，0=无效 */
+    float         bpm;
     float         snr;
-    float         raw_bpm;      /* 原始 FFT BPM */
-    float         track_bpm;    /* 追踪后 BPM */
+    float         raw_bpm;
+    float         track_bpm;
     BreathQuality quality;
     uint8_t       candidate_n;
     BRCandidate   candidates[BR_MAX_CANDIDATES];
 } BRResult;
 
-/* 呼吸率分析器状态（每个半区一个实例）(2026-05-06) */
+/* 卡尔曼滤波器（心率/呼吸率平滑，移植自 live_prediction.py KalmanHR/KalmanBR）(2026-05-06) */
+typedef struct {
+    float x;   /* 状态估计 */
+    float p;   /* 误差协方差 */
+    float q;   /* 过程噪声 */
+    float r;   /* 测量噪声 */
+} KalmanFilter;
+
+/* 呼吸率 + 心率联合分析器（每个半区一个实例）(2026-05-06) */
 typedef struct {
     /* 滑动窗口缓冲区：390帧 × 80点 */
     float     buf[BR_N_WIN][BR_HALF_SIZE];
-    uint16_t  buf_head;     /* 环形缓冲写指针 */
-    uint16_t  buf_count;    /* 已填充帧数 */
-
-    /* 帧计数，每 BR_FS 帧触发一次分析 (2026-05-06) */
+    uint16_t  buf_head;
+    uint16_t  buf_count;
     uint16_t  frame_cnt;
 
-    /* 历史追踪 (2026-05-06) */
+    /* 呼吸率历史追踪 (2026-05-06) */
     BRResult  hist[BR_TRACK_HISTORY];
     uint8_t   hist_head;
     uint8_t   hist_count;
-
-    /* 保持机制 (2026-05-06) */
     float     last_good_bpm;
     uint8_t   hold_count;
 
-    /* 最新结果 (2026-05-06) */
-    BRResult  result;
+    /* 卡尔曼平滑器 (2026-05-06) */
+    KalmanFilter kalman_br;   /* 呼吸率：Q=0.5, R=4.0, init=15 */
+    KalmanFilter kalman_hr;   /* 心率：  Q=2.0, R=16.0, init=65 */
+
+    /* 最新输出结果 (2026-05-06) */
+    BRResult  br_result;
+    float     hr_bpm;         /* 卡尔曼平滑后心率，0=无效 */
+    float     hr_snr;
+    uint8_t   motion;         /* 1=检测到运动 */
+    uint8_t   present;        /* 1=有人在床 */
     uint8_t   result_valid;
 } BreathAnalyzer;
 
 /* ── 公开接口 ─────────────────────────────────────────────── */
 
-/* 初始化分析器（清零所有状态）(2026-05-06) */
+/* 初始化分析器 (2026-05-06) */
 void breath_analyzer_init(BreathAnalyzer *ba);
 
-/* 推入一帧 80 点半区数据（uint8_t → float 转换在内部完成）
- * 每 BR_FS 帧自动触发一次分析，结果写入 ba->result (2026-05-06) */
+/* 推入一帧 80 点半区数据，每 BR_FS 帧自动触发分析 (2026-05-06) */
 void breath_analyzer_push(BreathAnalyzer *ba, const uint8_t *half80);
 
-/* 读取最新结果（线程安全：调用方需在临界区外读取 result_valid）(2026-05-06) */
+/* 读取呼吸率 BPM（0=无效）(2026-05-06) */
 static inline float breath_get_bpm(const BreathAnalyzer *ba)
 {
-    return ba->result_valid ? ba->result.bpm : 0.0f;
+    return (ba->result_valid && ba->present) ? ba->br_result.bpm : 0.0f;
+}
+
+/* 读取心率 BPM（0=无效）(2026-05-06) */
+static inline float breath_get_hr_bpm(const BreathAnalyzer *ba)
+{
+    return (ba->result_valid && ba->present && !ba->motion) ? ba->hr_bpm : 0.0f;
 }
 
 #ifdef __cplusplus
@@ -104,3 +134,4 @@ static inline float breath_get_bpm(const BreathAnalyzer *ba)
 #endif
 
 #endif /* BREATH_RATE_H */
+

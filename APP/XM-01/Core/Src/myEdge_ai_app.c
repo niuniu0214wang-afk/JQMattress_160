@@ -12,6 +12,10 @@ BreathAnalyzer g_breath_lower;
 uint8_t g_breath_rate_0 = 0xFF;
 uint8_t g_breath_rate_1 = 0xFF;
 
+/* 心率输出变量，0xFF = 无效/未就绪 (2026-05-06) */
+uint8_t g_heart_rate_0 = 0xFF;
+uint8_t g_heart_rate_1 = 0xFF;
+
 #define AI_THREAD_STACK_SIZE (1024 * 16)
 
 /* === 自适应基线校准 + 时间投票法参数定义 (2026-05-06) === */
@@ -46,7 +50,7 @@ static uint8_t s_vote_buf_lower[PERSON_VOTE_WINDOW];
 static uint8_t s_vote_index = 0;
 
 /* 睡姿EMA平滑状态 (2026-05-06) */
-/* 三分类：ema[0]=仰卧, ema[1]=左侧卧, ema[2]=右侧卧 */
+/* 三分类：ema[0]=仰卧, ema[1]=左侧卧, ema[2]=右侧卧 (2026-05-06) */
 static float   s_posture_ema_0[3]     = {0.0f, 0.0f, 0.0f};
 static float   s_posture_ema_1[3]     = {0.0f, 0.0f, 0.0f};
 static uint8_t s_posture_pending_0    = 0xFF;
@@ -151,12 +155,12 @@ static void reset_posture_ema(float *ema, uint8_t *pending, uint8_t *stable_cnt)
 
 /**
  * @brief 用新推理结果更新EMA，返回经迟滞确认后的姿势值 (2026-05-06)
- * @param label      posture_classify() 返回的 PostureLabel（1/2/3）
- * @param ema        EMA状态数组 [3]（持久化，跨帧）
+ * @param label      posture_classify() 返回的 PostureLabel（1/2/3/4）
+ * @param ema        EMA状态数组 [4]（持久化，跨帧）
  * @param pending    待确认姿势（持久化）
  * @param stable_cnt 稳定帧计数（持久化）
  * @param cur_posture 当前已提交姿势（未达阈值时原样返回）
- * @return 更新后的姿势值（1=仰卧, 2=左侧卧, 3=右侧卧）
+ * @return 更新后的姿势值（1=仰卧, 2=左侧卧, 3=右侧卧, 4=坐起）
  */
 static uint8_t update_posture_ema(int8_t label, float *ema,
                                    uint8_t *pending, uint8_t *stable_cnt,
@@ -164,19 +168,19 @@ static uint8_t update_posture_ema(int8_t label, float *ema,
 {
     int i;
     uint8_t argmax = 0;
-    float one_hot[3] = {0.0f, 0.0f, 0.0f};
+    float one_hot[4] = {0.0f, 0.0f, 0.0f, 0.0f};  /* 四分类 one-hot (2026-05-06) */
 
     /* 将 PostureLabel 转为 one-hot，POSTURE_UNKNOWN 不更新 (2026-05-06) */
-    if (label >= 1 && label <= 3)
+    if (label >= 1 && label <= 4)
         one_hot[label - 1] = 1.0f;
     else
         return cur_posture;
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 4; i++)
         ema[i] = POSTURE_EMA_ALPHA * one_hot[i] + (1.0f - POSTURE_EMA_ALPHA) * ema[i];
 
     /* argmax (2026-05-06) */
-    for (i = 1; i < 3; i++)
+    for (i = 1; i < 4; i++)
         if (ema[i] > ema[argmax]) argmax = (uint8_t)i;
 
     if (argmax == *pending) {
@@ -187,7 +191,7 @@ static uint8_t update_posture_ema(int8_t label, float *ema,
     }
 
     if (*stable_cnt >= POSTURE_STABLE_THRESHOLD)
-        return (uint8_t)(argmax + 1);  /* 1=仰卧, 2=左侧卧, 3=右侧卧 */
+        return (uint8_t)(argmax + 1);  /* 1=仰卧, 2=左侧卧, 3=右侧卧, 4=坐起 (2026-05-06) */
 
     return cur_posture;
 }
@@ -327,14 +331,20 @@ static void ai_thread_entry(void *parameter)
             g_person_count = s_person_count;
             g_posture_0    = s_posture_0;
             g_posture_1    = s_posture_1;
-            /* 呼吸率：有人时输出 BPM，无人时输出 0xFF (2026-05-06) */
+            /* 呼吸率和心率：有人时输出，无人或运动时输出 0xFF (2026-05-06) */
             {
                 float bpm0 = breath_get_bpm(&g_breath_lower);
                 float bpm1 = breath_get_bpm(&g_breath_upper);
+                float hr0  = breath_get_hr_bpm(&g_breath_lower);
+                float hr1  = breath_get_hr_bpm(&g_breath_upper);
                 g_breath_rate_0 = (s_prev_lower_person && bpm0 > 0.0f)
                                   ? (uint8_t)(bpm0 + 0.5f) : 0xFF;
                 g_breath_rate_1 = (s_prev_upper_person && bpm1 > 0.0f)
                                   ? (uint8_t)(bpm1 + 0.5f) : 0xFF;
+                g_heart_rate_0  = (s_prev_lower_person && hr0 > 0.0f)
+                                  ? (uint8_t)(hr0 + 0.5f) : 0xFF;
+                g_heart_rate_1  = (s_prev_upper_person && hr1 > 0.0f)
+                                  ? (uint8_t)(hr1 + 0.5f) : 0xFF;
             }
             rt_exit_critical();
         }

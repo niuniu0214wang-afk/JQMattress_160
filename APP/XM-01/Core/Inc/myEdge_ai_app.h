@@ -43,6 +43,10 @@ extern uint8_t g_posture_1;
 extern uint8_t g_breath_rate_0;  /* 下半区呼吸率 bpm，0xFF=无效 */
 extern uint8_t g_breath_rate_1;  /* 上半区呼吸率 bpm，0xFF=无效 */
 
+/* 心率输出变量（0xFF = 无效/未就绪）(2026-05-06) */
+extern uint8_t g_heart_rate_0;   /* 下半区心率 bpm，0xFF=无效 */
+extern uint8_t g_heart_rate_1;   /* 上半区心率 bpm，0xFF=无效 */
+
 /* 呼吸率分析器实例（供外部读取状态）(2026-05-06) */
 extern BreathAnalyzer g_breath_upper;
 extern BreathAnalyzer g_breath_lower;
