@@ -83,8 +83,10 @@ typedef struct {
 
 /* 呼吸率 + 心率联合分析器（每个半区一个实例）(2026-05-06) */
 typedef struct {
-    /* 滑动窗口缓冲区：390帧 × 80点 */
-    float     buf[BR_N_WIN][BR_HALF_SIZE];
+    /* 滑动窗口缓冲区：390帧 × 80点，用 uint8_t 存储节省 RAM
+     * float[390][80] = 124 KB × 2实例 = 248 KB，超出 STM32F405 128 KB RAM
+     * uint8_t[390][80] = 31 KB × 2实例 = 62 KB，可用 (2026-05-06) */
+    uint8_t   buf[BR_N_WIN][BR_HALF_SIZE];
     uint16_t  buf_head;
     uint16_t  buf_count;
     uint16_t  frame_cnt;

@@ -768,7 +768,7 @@ void breath_analyzer_push(BreathAnalyzer *ba, const uint8_t *half80)
 {
     int c;
     for (c = 0; c < BR_HALF_SIZE; c++)
-        ba->buf[ba->buf_head][c] = (float)half80[c];
+        ba->buf[ba->buf_head][c] = half80[c];  /* 直接存 uint8_t，节省 RAM (2026-05-06) */
     ba->buf_head = (ba->buf_head + 1) % BR_N_WIN;
     if (ba->buf_count < BR_N_WIN) ba->buf_count++;
 
