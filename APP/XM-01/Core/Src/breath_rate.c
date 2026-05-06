@@ -504,6 +504,26 @@ static float br_track(BreathAnalyzer *ba, BRResult *cur, float prior_bpm)
     return best_bpm;
 }
 
+/* 卡尔曼滤波器初始化 (2026-05-06) */
+static void kalman_init(KalmanFilter *kf, float q, float r, float init_val, float init_p)
+{
+    kf->x = init_val;
+    kf->p = init_p;
+    kf->q = q;
+    kf->r = r;
+}
+
+/* 卡尔曼更新，返回平滑后的值 (2026-05-06) */
+static float kalman_update(KalmanFilter *kf, float z)
+{
+    float k;
+    kf->p += kf->q;
+    k      = kf->p / (kf->p + kf->r);
+    kf->x += k * (z - kf->x);
+    kf->p *= (1.0f - k);
+    return kf->x;
+}
+
 /* ── 主分析函数 ──────────────────────────────────────────────*/
 static void br_analyze(BreathAnalyzer *ba)
 {
@@ -595,26 +615,6 @@ static void br_analyze(BreathAnalyzer *ba)
 }
 
 /* ── 公开接口实现 ─────────────────────────────────────────── */
-
-/* 卡尔曼滤波器初始化 (2026-05-06) */
-static void kalman_init(KalmanFilter *kf, float q, float r, float init_val, float init_p)
-{
-    kf->x = init_val;
-    kf->p = init_p;
-    kf->q = q;
-    kf->r = r;
-}
-
-/* 卡尔曼更新，返回平滑后的值 (2026-05-06) */
-static float kalman_update(KalmanFilter *kf, float z)
-{
-    float k;
-    kf->p += kf->q;
-    k      = kf->p / (kf->p + kf->r);
-    kf->x += k * (z - kf->x);
-    kf->p *= (1.0f - k);
-    return kf->x;
-}
 
 /* ── 运动检测 ────────────────────────────────────────────────
  * 总载荷逐帧变化量超阈值 → 运动伪影
