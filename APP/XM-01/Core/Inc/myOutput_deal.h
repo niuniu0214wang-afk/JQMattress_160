@@ -2,7 +2,6 @@
 #define _MYOUTPUT_DEAL_H_
 
 #include "protocol_parser.h"
-#include "mcu_body_analyzer.h"
 #include "myEdge_ai_app.h"
 #include "myFlash.h"
 #include <string.h>

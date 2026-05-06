@@ -4,15 +4,15 @@
 #define DEVICE_READY 0x00     /* 准备就绪 */
 #define CRC_FAILSE 0xe1       /* CRC校验失败 */
 #define DATA_LEN_ERROR 0xe2   /* 数据长度错误 */
-#define FW_TYPE_ERROR 0xe3    /* 固件类型错 */
+#define FW_TYPE_ERROR 0xe3    /* 固件类型�?*/
 #define FW_SIZE_ERROR 0xe4    /* 固件大小超限 */
 #define FW_PACK_ERROR 0xe5    /* 分包大小超限 */
-#define IAP_STATUS_ERROR 0xe6 /* 已经处于升级状态或者升级状态异常 */
+#define IAP_STATUS_ERROR 0xe6 /* 已经处于升级状态或者升级状态异�?*/
 #define FLASH_ERROR 0xe7      /* flash错误 */
-#define TRY_TIME_INTER 5000   /* 通讯重发间隔 */
+#define TRY_TIME_INTER 5000  /* 通讯重发间隔 */
 #define WINDOW_SIZE 5
 
-/* IAP升级状态 */
+/* IAP升级状�?*/
 typedef enum
 {
     IAP_IDLE_STATUS = 0,
@@ -24,12 +24,12 @@ typedef enum
 /* IAP升级数据结构 */
 typedef struct
 {
-    t_iap_status step;             /* iap状态 */
+    t_iap_status step;             /* iap状�?*/
     rt_tick_t req_tick;            /* 通讯请求重发监控 */
     rt_tick_t iap_tick;            /* IAP全局监控 */
     unsigned char try_cnt;         /* 重试次数 */
     unsigned char sw_ver[3];       /* 软件版本 */
-    unsigned short total_pack_num; /* 总包数 */
+    unsigned short total_pack_num; /* 总包�?*/
     unsigned short pack_num;       /* 当前包数 */
     unsigned short pack_size;      /* 一包字节数 */
     unsigned int file_size;        /* BIN文件大小 */
@@ -41,26 +41,24 @@ static t_iap s_iap;
 
 /* BIN文件特殊标识，防止错乱的BIN文件 */
 const char iap_tag[] __attribute__((section(".iap_tag"))) = "OTA_TAG";
-unsigned char UploadSrcMattressData[160] = {0};  /* 上传缓冲区，与160点输出一致 (2026-05-06) */
+unsigned char UploadSrcMattressData[160] = {0};  /* 10x16矩阵尺寸 (2026-04-02) */
 
 static ProtocolFrame resp;
 static ProtocolFrame rx_frame;
 static uint8_t first_flag = 0;
-static uint8_t send_buf[512];
+static uint8_t send_buf[1024];  /* 增大缓冲区以容纳160字节传感器数据 (2026-04-02) */
 static uint8_t recv_buf[OUTPUT_RX_BUFFER_SIZE];
 static uint16_t recv_len = 0;
-static rt_tick_t start_tick = 0;
 static rt_tick_t count_tick = 0;
-static rt_tick_t device_upload_tick = 0;
 static rt_uint16_t seq_num = 0xffff;
 static rt_uint32_t timeStamp = 0xffffffff;
-static rt_uint16_t Upload_Time = 500;
 static CommState comm_state = STATE_WAIT_RECV;
+static rt_uint32_t Upload_Time = 6000; /* 上报间隔1分钟 (2026-03-23) */
+static rt_tick_t start_tick = 0;
 static unsigned char bin_file[2048];
-/* 导入直接输出变量 - 避免struct对齐问题 - 2025-11-06 */
 
 /*------------------/-------------------/-------------------/------------------/
- * @brief   获取软件版本号
+ * @brief   ��ȡ�����汾��
  * @param   none
  * @return  none.
  * @note    none
@@ -81,6 +79,7 @@ static int get_sw_version(unsigned char *version)
 }
 
 /*------------------/-------------------/-------------------/------------------/
+<<<<<<< HEAD
  * @brief   查找众数
  * @param   none
  * @return  none.
@@ -90,11 +89,12 @@ unsigned char find_most_value(unsigned char *arr, unsigned int len)
 {
     unsigned char value;
     unsigned char num, max_num = 0;
+    unsigned int i, j;
 
-    for (int i = 0; i < len; i++)
+    for (i = 0; i < len; i++)
     {
         num = 0;
-        for (int j = 0; j < len; j++)
+        for (j = 0; j < len; j++)
         {
             if (arr[i] == arr[j])
             {
@@ -111,82 +111,85 @@ unsigned char find_most_value(unsigned char *arr, unsigned int len)
     return value;
 }
 
+#if 0
 /*------------------/-------------------/-------------------/------------------/
- * @brief   计算平均值
+ * @brief   计算平均�?
  * @param   none
  * @return  none.
  * @note    none
 /-------------------/-------------------/-------------------/-----------------*/
-
-/*------------------/-------------------/-------------------/------------------/
- * @brief   30 17 设备信息上报
- * @param   none
- * @return  none.
- * @note    none
-/-------------------/-------------------/-------------------/-----------------*/
-static void upload_devide_info(void)
+static unsigned char calc_avg(unsigned char *arr, unsigned int len)
 {
-    uint8_t output_frame_ctrl = FRAME_CTL_TYPE_DATA;
-    uint8_t myPayload[27] = {0x30, 0x17, 0x00, 0x17};
+    double sum = 0;
+    unsigned int cnt = 0;
 
-    myPayload[4] = 0x06; /* 设备类型，默认为6 */
-    myPayload[5] = 0x01;
+    for (int i = 0; i < len; i++)
+    {
+        if (arr[i] != 0xFF)
+        {
+            sum += arr[i];
+            cnt++;
+        }
+    }
 
-    get_sw_version(myPayload + 6);
+    if (cnt)
+    {
+        sum /= cnt;
+        sum += 0.5;
+    }
+    else
+    {
+        return 0xFF;
+    }
 
-    /* mac地址设置为全0 */
-    rt_memset(myPayload + 9, 0, 16);
-
-    /* 数据上报 */
-    output_frame_ctrl |= FRAME_CTL_CRC_EN;
-    Protocol_BuildFrame(&resp,
-                        output_frame_ctrl,
-                        seq_num++,
-                        timeStamp,
-                        myPayload,
-                        sizeof(myPayload),
-                        true);
-    Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
-    HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(myPayload) + 4, 50);
-    rt_kprintf("\n------------------------------------------------------------------------\n");
-    hex_dump_simple(send_buf, 12 + sizeof(myPayload) + 4);
+    return ((unsigned char)sum);
 }
+#endif
 
 /*------------------/-------------------/-------------------/------------------/
- * @brief   状态上传
+ * @brief   状态上传（包含160字节实时预处理传感器数据）
  * @param   none
  * @return  none.
- * @note    none
+ * @note    MCMD:0x02, SCMD:0x11
+ *          payload结构: 28字节状态数据 + 160字节传感器数据 = 188字节
+ *          (2026-04-02)
+ *          暂时未使用，保留用于未来功能扩展 (2026-02-24)
 /-------------------/-------------------/-------------------/-----------------*/
+#if 1
 static void upload_StatusPackage(void)
 {
-    uint8_t myPayload[10 + 160] = {0x02, 0x11, 0x01, 0x0a};  /* payload改为160字节 (2026-05-06) */
-    rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_DATA;
+    /* CMD_DATA共22字节：左床11字节 + 右床11字节 (2026-05-06) */
+    rt_uint8_t payload[26] = {0x02, 0x10, 0x16, 0x00};
+    rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_ACK;
 
-    /* 160点版本不计算腰部坐标，waist字段填0xFF (2026-05-06) */
-    myPayload[4] = g_posture_0;
-    myPayload[5] = 0xFF;
-    myPayload[6] = 0xFF;
-    myPayload[7] = g_posture_1;
-    myPayload[8] = 0xFF;
-    myPayload[9] = 0xFF;
+    /* 左床数据（payload[4..14]）(2026-05-06) */
+    payload[4] = g_posture_0;      /* 睡姿 */
+    payload[5] = g_breath_rate_0;  /* 呼吸率 bpm，0xFF=无效 */
+    payload[6] = 0xFF;             /* 心率：本项目未实现 */
+    payload[7] = 0xFF;             /* 离床状态：本项目未实现 */
+    payload[8] = 0xFF;             /* 起身状态：本项目未实现 */
+    rt_memset(payload + 9, 0xFF, 6);  /* 气囊：本项目未实现 */
 
-    rt_memcpy(myPayload + 10, UploadSrcMattressData, sizeof(UploadSrcMattressData));
-    //---------------------------------------------
+    /* 右床数据（payload[15..25]）(2026-05-06) */
+    payload[15] = g_posture_1;     /* 睡姿 */
+    payload[16] = g_breath_rate_1; /* 呼吸率 bpm，0xFF=无效 */
+    payload[17] = 0xFF;            /* 心率：本项目未实现 */
+    payload[18] = 0xFF;            /* 离床状态：本项目未实现 */
+    payload[19] = 0xFF;            /* 起身状态：本项目未实现 */
+    rt_memset(payload + 20, 0xFF, 6); /* 气囊：本项目未实现 */
+
     output_frame_ctrl |= FRAME_CTL_CRC_EN;
     Protocol_BuildFrame(&resp,
                         output_frame_ctrl,
                         seq_num++,
                         timeStamp,
-                        myPayload,
-                        sizeof(myPayload),
+                        payload,
+                        sizeof(payload),
                         true);
     Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
-    HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(myPayload) + 4, 50);
-    rt_kprintf("\n------------------------------------------------------------------------\n");
-    hex_dump_simple(send_buf, 12 + sizeof(myPayload) + 4);
-    rt_kprintf("\n------------------------------------------------------------------------\n");
+    HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
 }
+#endif
 
 /*------------------/-------------------/-------------------/------------------/
  * @brief   iap结果上报
@@ -196,11 +199,11 @@ static void upload_StatusPackage(void)
 /-------------------/-------------------/-------------------/-----------------*/
 static void iap_result_report(unsigned char r)
 {
+    unsigned char payload[9] = {0xF0, 0xA3, 0x05, 0x00};
     unsigned char output_frame_ctrl = FRAME_CTL_TYPE_ACK;
-    unsigned char payload[9] = {0xF0, 0xA3, 0x00, 0x05};
 
+    (void)r; /* 未使用的参数，保留用于未来扩�?(2026-02-24) */
     payload[4] = 6;
-    payload[5] = r;
 
     get_sw_version(payload + 6);
     if (rx_frame.crc_enabled)
@@ -208,8 +211,8 @@ static void iap_result_report(unsigned char r)
         output_frame_ctrl |= FRAME_CTL_CRC_EN;
     }
 
-    Protocol_BuildFrame(&resp, 0x80, rx_frame.seq_num, timeStamp, payload, sizeof(payload), true);
-    // 发送 数据
+    Protocol_BuildFrame(&resp, output_frame_ctrl, rx_frame.seq_num, timeStamp, payload, sizeof(payload), true);
+    /* 发送数�?(2026-02-24) */
     Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
     HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
     // hex_dump_simple(send_buf, 8 + sizeof(payload) + 2);
@@ -244,12 +247,14 @@ static void comm_state_machine_run(void)
             rt_memset(output_uart_rx_buffer, 0, sizeof(output_uart_rx_buffer));
 
             s_pos += output_uart_rx_len;
-            for (int i = 0; i < s_pos - 1; i++)
             {
-                int temp_len = Protocol_ParseFrame(s_fifo + i, s_pos - i, &rx_frame);
-
-                if (temp_len < 0)
+                unsigned int i;
+                for (i = 0; i < s_pos - 1; i++)
                 {
+                    int temp_len = Protocol_ParseFrame(s_fifo + i, s_pos - i, &rx_frame);
+
+                    if (temp_len < 0)
+                    {
                     continue;
                 }
                 else if (temp_len == 0)
@@ -268,6 +273,7 @@ static void comm_state_machine_run(void)
                     comm_state = STATE_PARSE_FRAME;
                     return;
                 }
+            }
             }
 
             s_fifo[0] = s_fifo[s_pos - 1];
@@ -331,7 +337,7 @@ static void comm_state_machine_run(void)
                         SEGGER_RTT_printf(0, "pack size:%d, receive pack size:%d\r\n", temp_len, pack_size);
                         if (pack_size != temp_len)
                         {
-                            // 这里temp_len最好是四的整数倍
+                            // 这里temp_len最好是四的整数�?
                             SEGGER_RTT_printf(0, "pack_size != temp_len\r\n");
                             status++;
                         }
@@ -366,12 +372,13 @@ static void comm_state_machine_run(void)
                         /* 写FLASH */
                         bin_flash_write(BIN_ADDR + (pack_no - 1) * s_iap.pack_size, (unsigned int *)bin_file, pack_size);
 
-                        /* 最后一包 */
+                        /* 最后一�?*/
                         if (s_iap.pack_num == s_iap.total_pack_num)
                         {
                             unsigned int cs = 0;
+                            unsigned int i;
 
-                            for (int i = 0; i < s_iap.file_size; i++)
+                            for (i = 0; i < s_iap.file_size; i++)
                             {
                                 cs += *(unsigned char *)(BIN_ADDR + i);
                             }
@@ -415,7 +422,7 @@ static void comm_state_machine_run(void)
             }
             else
             {
-                // 非 ACK，跳转执行命令
+                // �?ACK，跳转执行命�?
                 comm_state = STATE_HANDLE_CMD;
             }
         }
@@ -435,14 +442,19 @@ static void comm_state_machine_run(void)
         // 软件版本读取命令
         if (mcmd == 0x02 && scmd == 0x12)
         {
-            rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_ACK;
-            uint8_t payload[1 + 1 + 2 + 1 + 16] = {0x02, 0x12, 0x00, 0x11, 0x00};
+            uint8_t output_frame_ctrl = FRAME_CTL_TYPE_ACK;
+            uint16_t rx_data_len_12 = (uint16_t)rx_frame.payload[2] | ((uint16_t)rx_frame.payload[3] << 8);  /* data_len 小端�?(2026-03-10) */
+            (void)rx_data_len_12;
+            uint8_t payload[8] = {0x02, 0x12, 0x04, 0x00, 0x00};
 
             get_sw_version(payload + 5);
             if (rx_frame.need_ack)
             {
                 if (rx_frame.crc_enabled)
+                {
                     output_frame_ctrl |= FRAME_CTL_CRC_EN;
+                }
+                    
                 Protocol_BuildFrame(&resp,
                                     output_frame_ctrl,
                                     rx_frame.seq_num,
@@ -450,28 +462,31 @@ static void comm_state_machine_run(void)
                                     payload,
                                     sizeof(payload),
                                     true);
-                // 发送 数据
+                // 发�?数据
                 Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
                 HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
                 // hex_dump_simple(send_buf, 8 + sizeof(payload) + 2);
             }
         }
-        // 设置状态包上报间隔
+        /* 状态上报（响应查询）(2026-05-06) */
         else if (mcmd == 0x02 && scmd == 0x10)
         {
+            rt_uint8_t payload[26] = {0x02, 0x10, 0x16, 0x00};
             rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_ACK;
-            uint8_t payload[1 + 1 + 2 + 1 + 2] = {0x02, 0x10, 0x00, 0x03, 0x00};
-            Upload_Time = (rx_frame.payload[4] << 8) + (rx_frame.payload[5]);
-            // 0.1秒~30秒 都是正常范围
-            if (Upload_Time >= 100 && Upload_Time <= 30000)
-                payload[4] = 0x00;
-            else
-            {
-                payload[4] = 0xe1;
-                Upload_Time = 100;
-            }
-            payload[5] = rx_frame.payload[4];
-            payload[6] = rx_frame.payload[5];
+
+            payload[4] = g_posture_0;
+            payload[5] = g_breath_rate_0;
+            payload[6] = 0xFF;
+            payload[7] = 0xFF;
+            payload[8] = 0xFF;
+            rt_memset(payload + 9, 0xFF, 6);
+
+            payload[15] = g_posture_1;
+            payload[16] = g_breath_rate_1;
+            payload[17] = 0xFF;
+            payload[18] = 0xFF;
+            payload[19] = 0xFF;
+            rt_memset(payload + 20, 0xFF, 6);
 
             if (rx_frame.need_ack)
             {
@@ -484,16 +499,40 @@ static void comm_state_machine_run(void)
                                     payload,
                                     sizeof(payload),
                                     true);
-                // 发送 数据
                 Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
                 HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
-                // hex_dump_simple(send_buf, 8 + sizeof(payload) + 2);
             }
         }
+        else if ((mcmd == 0x30) && (scmd == 0x17)) /* 用户信息下发（本项目忽略，仅回ACK）(2026-05-06) */
+        {
+            rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_ACK;
+            rt_uint8_t payload[5] = {0x30, 0x17, 0x01, 0x00, 0x00};
+
+            if (rx_frame.need_ack)
+            {
+                if (rx_frame.crc_enabled)
+                {
+                    output_frame_ctrl |= FRAME_CTL_CRC_EN;
+                }
+
+                Protocol_BuildFrame(&resp,
+                                    output_frame_ctrl,
+                                    rx_frame.seq_num,
+                                    timeStamp,
+                                    payload,
+                                    sizeof(payload),
+                                    true);
+                // 发�?数据
+                Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
+                HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
+            }
+		}
         else if ((mcmd == 0x30) && (scmd == 0x18)) /* 按摩模块设备信息查询 */
         {
             rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_ACK;
-            uint8_t payload[1 + 1 + 2 + 24] = {0x30, 0x18, 0x00, 0x18, 0x00, 0x06, 0x01};
+            uint16_t rx_data_len_18 = (uint16_t)rx_frame.payload[2] | ((uint16_t)rx_frame.payload[3] << 8);  /* data_len 小端�?(2026-03-10) */
+            (void)rx_data_len_18;
+            uint8_t payload[1 + 1 + 2 + 24] = {0x30, 0x18, 0x18, 0x00, 0x00, 0x06, 0x01};
 
             get_sw_version(payload + 7);
             rt_memset(payload + 10, 0, sizeof(payload) - 10);
@@ -509,7 +548,7 @@ static void comm_state_machine_run(void)
                                     payload,
                                     sizeof(payload),
                                     true);
-                // 发送 数据
+                // 发�?数据
                 Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
                 HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
             }
@@ -519,7 +558,7 @@ static void comm_state_machine_run(void)
         {
             unsigned char status = DEVICE_READY;
 
-            /* 软件版本号 */
+            /* 软件版本�?*/
             rt_memset((unsigned char *)&s_iap, 0, sizeof(s_iap));
             rt_memcpy(s_iap.sw_ver, &rx_frame.payload[4], 3);
 
@@ -562,7 +601,7 @@ static void comm_state_machine_run(void)
                 s_iap.total_pack_num = pack_num;
             }
 
-            /* 固件文件校验和 */
+            /* 固件文件校验�?*/
             unsigned int crc = rx_frame.payload[14];
             crc <<= 8;
             crc |= rx_frame.payload[15];
@@ -599,7 +638,7 @@ static void comm_state_machine_run(void)
 
             /* 开始OTA回复 */
             unsigned char output_frame_ctrl = FRAME_CTL_TYPE_ACK;
-            unsigned char payload[5] = {0xF0, 0x01, 0x00, 0x01};
+            unsigned char payload[5] = {0xF0, 0x01, 0x01, 0x00};
             payload[4] = status;
 
             if (rx_frame.need_ack)
@@ -616,7 +655,7 @@ static void comm_state_machine_run(void)
                                     payload,
                                     sizeof(payload),
                                     true);
-                // 发送 数据
+                // 发�?数据
                 Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
                 HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
                 // hex_dump_simple(send_buf, 8 + sizeof(payload) + 2);
@@ -637,7 +676,7 @@ static void comm_state_machine_run(void)
 
             /* 开始OTA回复 */
             unsigned char output_frame_ctrl = FRAME_CTL_TYPE_ACK;
-            unsigned char payload[5] = {0xF0, 0x03, 0x00, 0x01, 0x00};
+            unsigned char payload[5] = {0xF0, 0x03, 0x01, 0x00};
 
             if (rx_frame.need_ack)
             {
@@ -653,7 +692,7 @@ static void comm_state_machine_run(void)
                                     payload,
                                     sizeof(payload),
                                     true);
-                // 发送 数据
+                // 发�?数据
                 Protocol_SerializeFrame(send_buf, sizeof(send_buf), &resp);
                 HAL_UART_Transmit(&huart3, send_buf, 12 + sizeof(payload) + 4, 100);
                 // hex_dump_simple(send_buf, 8 + sizeof(payload) + 2);
@@ -679,30 +718,16 @@ static void comm_state_machine_run(void)
         break;
     }
 
-    // 30 17设备信息上报
-    static unsigned char upload_cnt = 3;
-    if (device_upload_tick == 0)
-    {
-        device_upload_tick = rt_tick_get_millisecond();
-    }
-    else if (upload_cnt && (rt_tick_get_millisecond() - device_upload_tick >= 500))
-    {
-        upload_cnt--;
-        device_upload_tick = rt_tick_get_millisecond();
-        upload_devide_info();
-    }
-
 #if 1
     if (s_iap.iap_tick == 0)
     {
-        // 默认上报状态
+        // 时间�?
         if (rt_tick_get_millisecond() - start_tick > Upload_Time)
         {
             upload_StatusPackage();
             start_tick = rt_tick_get_millisecond();
         }
 
-        // 时间戳
         if (rt_tick_get_millisecond() - count_tick > 1000)
         {
             timeStamp++;
@@ -790,7 +815,7 @@ static void comm_state_machine_run(void)
         }
     }
 
-    /* 升级成功后第一次上电 */
+    /* 升级成功后第一次上�?*/
     if (first_flag == 0)
     {
         t_flash_data flash_data;
@@ -812,8 +837,8 @@ static void comm_state_machine_run(void)
 ////////////////////////////////////////////////////////////////////////////////////
 
 /* 定义线程栈与控制块（静态分配） */
-#define OUTPUT_THREAD_STACK_SIZE 2048  /* 增大线程栈防止upload_StatusPackage中270字节局部变量导致栈溢出 (2026-04-07) */
-struct rt_event output_uart_rx_event; // 静态事件对象;
+#define OUTPUT_THREAD_STACK_SIZE 2048
+struct rt_event output_uart_rx_event; // 静态事件对�?
 static struct rt_thread output_thread;
 static rt_uint8_t output_thread_stack[OUTPUT_THREAD_STACK_SIZE];
 
@@ -825,6 +850,7 @@ static rt_uint8_t output_thread_stack[OUTPUT_THREAD_STACK_SIZE];
 /-------------------/-------------------/-------------------/-----------------*/
 static void output_thread_entry(void *parameter)
 {
+    (void)parameter; /* 未使用的参数 (2026-02-24) */
     while (1)
     {
         comm_state_machine_run();
@@ -833,7 +859,7 @@ static void output_thread_entry(void *parameter)
 }
 
 /*------------------/-------------------/-------------------/------------------/
- * @brief   线程初始化
+ * @brief   线程初始�?
  * @param   none
  * @return  none.
  * @note    none
@@ -843,14 +869,14 @@ int output_thread_init(void)
     rt_err_t result1 = rt_event_init(&output_uart_rx_event, "uart_rx_evt", RT_IPC_FLAG_FIFO);
     if (result1 != RT_EOK)
         return -RT_ERROR;
-    rt_thread_init(&output_thread,              // 线程控制块
+    rt_thread_init(&output_thread,              // 线程控制�?
                    "output_task",               // 名称
                    output_thread_entry,         // 入口函数
                    RT_NULL,                     // 参数
                    &output_thread_stack[0],     // 栈起始地址
-                   sizeof(output_thread_stack), // 栈大小
-                   10,                          // 优先级(高)
-                   10);                         // 时间片
+                   sizeof(output_thread_stack), // 栈大�?
+                   10,                          // 优先�?�?
+                   10);                         // 时间�?
     rt_thread_startup(&output_thread);          // 启动线程
     return RT_EOK;
 }

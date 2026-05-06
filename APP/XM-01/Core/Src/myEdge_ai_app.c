@@ -1,8 +1,16 @@
 /* 传感器处理从260点改为160点，映射规则来自 docs/sensor_mapping.md (2026-05-06) */
 #include "myEdge_ai_app.h"
-#include "posture_classifier.h"  /* InDevelop随机森林姿态分类器，替代X-CUBE-AI模型 (2026-05-06) */
+#include "posture_classifier.h"  /* InDevelop随机森林姿态分类器 (2026-05-06) */
 #include <stdint.h>
 #include <math.h>
+
+/* 呼吸率分析器实例（上半区 = output[80:160]，下半区 = output[0:80]）(2026-05-06) */
+BreathAnalyzer g_breath_upper;
+BreathAnalyzer g_breath_lower;
+
+/* 呼吸率输出变量，0xFF = 无效/未就绪 (2026-05-06) */
+uint8_t g_breath_rate_0 = 0xFF;
+uint8_t g_breath_rate_1 = 0xFF;
 
 #define AI_THREAD_STACK_SIZE (1024 * 16)
 
@@ -306,12 +314,28 @@ static void ai_thread_entry(void *parameter)
     {
         if (rt_event_recv(&data_ready_event, 0x01, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &e) == RT_EOK)
         {
+            /* 睡姿推理 (2026-05-06) */
             (void)Model(Origin_MattressData);
+
+            /* 呼吸率：每帧推入对应半区数据（无论有无人，持续积累信号）(2026-05-06)
+             * 上半区 = Origin_MattressData[80:160]
+             * 下半区 = Origin_MattressData[0:80]  */
+            breath_analyzer_push(&g_breath_upper, Origin_MattressData + 80);
+            breath_analyzer_push(&g_breath_lower, Origin_MattressData);
 
             rt_enter_critical();
             g_person_count = s_person_count;
             g_posture_0    = s_posture_0;
             g_posture_1    = s_posture_1;
+            /* 呼吸率：有人时输出 BPM，无人时输出 0xFF (2026-05-06) */
+            {
+                float bpm0 = breath_get_bpm(&g_breath_lower);
+                float bpm1 = breath_get_bpm(&g_breath_upper);
+                g_breath_rate_0 = (s_prev_lower_person && bpm0 > 0.0f)
+                                  ? (uint8_t)(bpm0 + 0.5f) : 0xFF;
+                g_breath_rate_1 = (s_prev_upper_person && bpm1 > 0.0f)
+                                  ? (uint8_t)(bpm1 + 0.5f) : 0xFF;
+            }
             rt_exit_critical();
         }
     }
@@ -320,6 +344,9 @@ static void ai_thread_entry(void *parameter)
 /* 初始化函数，使用静态线程启动 AI 运算 (2026-05-06) */
 int ai_thread_init(void)
 {
+    breath_analyzer_init(&g_breath_upper);
+    breath_analyzer_init(&g_breath_lower);
+
     rt_thread_init(&ai_thread,
                    "ai_task",
                    ai_thread_entry,
