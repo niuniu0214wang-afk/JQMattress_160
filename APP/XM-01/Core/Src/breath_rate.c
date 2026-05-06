@@ -86,6 +86,13 @@ static float s_fft_mag[BR_FFT_OUT];     /* FFT 幅度谱 */
 static float s_mean_load[BR_HALF_SIZE]; /* 各通道平均负载 */
 static float s_weights[BR_HALF_SIZE];   /* ROI 权重 */
 
+/* 心率相关工作缓冲区（移至顶部，br_analyze 中使用）(2026-05-06) */
+static float s_body_sig[BR_N_WIN];
+static float s_hr_filtered[BR_N_WIN];
+static float s_hr_filtered_rev[BR_N_WIN];
+static float s_hr_sos_x[HR_SOS_SECTIONS][2];
+static float s_hr_sos_y[HR_SOS_SECTIONS][2];
+
 /* IIR 滤波器状态（每节2个延迟）(2026-05-06) */
 static float s_sos_x[BR_SOS_SECTIONS][2]; /* 输入延迟 */
 static float s_sos_y[BR_SOS_SECTIONS][2]; /* 输出延迟 */
@@ -668,12 +675,6 @@ static void br_fuse_body_signal(const BreathAnalyzer *ba, float *out_sig, float 
 }
 
 /* ── 心率带 IIR 滤波（前向）────────────────────────────────── */
-static float s_hr_sos_x[HR_SOS_SECTIONS][2];
-static float s_hr_sos_y[HR_SOS_SECTIONS][2];
-static float s_hr_filtered[BR_N_WIN];
-static float s_hr_filtered_rev[BR_N_WIN];
-static float s_body_sig[BR_N_WIN];
-
 static void br_hr_filter_forward(const float *in, float *out, int n)
 {
     int i, s;
