@@ -1,15 +1,27 @@
 #include "mySensor_deal.h"
 
+/* 帧长度保持1024字节，输出改为160点 (2026-05-06) */
 #define FRAME_LEN                     1024
 #define FRAME_HEADER_LEN              4
 #define DEBUG_MODE                    0 /* DEBUG_MODE=1时，使用测试数据，不使用传感器数据，但需要传感器数据触发中断 */
 
 static uint8_t local_buf[2048] = {0};
 uint8_t Origin_MattressData_Resize[FRAME_LEN];
-uint8_t Origin_MattressData[260];
+uint8_t Origin_MattressData[160];  /* 16x10矩阵，1024→160映射输出 (2026-05-06) */
 const uint8_t FRAME_HEADER[FRAME_HEADER_LEN] = {0xAA, 0x55, 0x03, 0x99};
 
 #if DEBUG_MODE
+/* 测试数据: 160点测试数据占位 (2026-05-06) */
+static const uint8_t test_data_160[160] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
 unsigned char test_data[1024] =
 {
    //2-1-2 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 48, 42, 10, 28, 6, 0, 0, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 50, 54, 26, 24, 18, 33, 0, 57, 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 33, 38, 57, 35, 31, 7, 28, 0, 6, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 65, 46, 93, 90, 68, 49, 62, 12, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 113, 83, 124, 125, 103, 82, 72, 54, 126, 103, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 68, 66, 123, 152, 115, 94, 78, 72, 84, 96, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 106, 75, 91, 141, 126, 125, 103, 86, 71, 155, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 105, 72, 112, 92, 189, 143, 107, 115, 98, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 121, 76, 52, 44, 74, 97, 85, 53, 15, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 17, 38, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 8, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 100, 67, 54, 48, 9, 20, 28, 54, 51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 92, 99, 94, 84, 103, 60, 40, 61, 115, 92, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 85, 134, 84, 83, 56, 32, 53, 84, 114, 123, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 63, 103, 84, 75, 80, 22, 51, 86, 82, 105, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 62, 64, 33, 55, 12, 49, 14, 44, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 29, 45, 13, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 9, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -21,22 +33,25 @@ unsigned char test_data[1024] =
 
 };
 
-// 测试数据260字节，来自parsed_sensor_data.csv第一行sensor_data，十六进制转十进制 (2026-03-23)
-unsigned char test_data_260[260] =
+// 测试数据160字节占位（原260字节测试数据已废弃，改为160点）(2026-05-06)
+unsigned char test_data_160_raw[160] =
 {
-    0,   0,   0,   0,   0,   0,  18,   0,   0,   7,   0,   0,   0,   0,   7,   0,  10,   0,  21,   0,
-    0,   0,   0,   0,   0,   0,   8,   0,   0,   0,   0,   0,  14,   0,   0,   0,  18,   0,   0,   0,
-    0,   0,   0,   0,   0,   0,   5,   0,   0,   0,   0,   8,  11,   0,   0,   6,  23,   0,   0,   6,
-    0,   0,   0,   0,   5,   0,   0,   0,   0,   0,   0,   5,  27,   5,   0,  22,  48,   5,   0,   0,
-   11,   0,   5,   0,   5,   0,   0,   0,   7,   0,   0,   0,   0,   0,   0,   0,  30,   0,   0,   0,
-    0,  32,  43,   0,   6,   0,  10,   0,   6,   9,   0,   0,   0,   0,   0,   0,   7,   0,   0,   0,
-    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-    0,   0,   0,   0,   0,   0,   0,   0,  18,   0,  12,   0,   0,  26,   0,   9,   0,   0,   0,   7,
-    0,   0,   0,   0,   0,  17,   5,   0,   0,   0,   0,   0,   0,   6,   0,   6,   0,  16,   0,  10,
-    6,   6,   0,   0,   0,   7,   0,   0,   0,   7,   0,   0,   0,  15,   5,  59,  36,  57,  21,  14,
-    9,  15,   7,  35,  36,  74,  69,  55,  49, 150,  61,  99, 137, 168, 130, 135, 196, 153,  79, 189,
-  168, 107, 128, 182, 180, 173, 145, 156, 158, 128, 136,  80,  41,  97,  47,  93, 159, 135, 163,  19,
-   12,  26,  15,  80,  13,  92,  84, 128, 140,  17,   5,   5,   5,  31,   7,  38,  61,  50, 124,   0
+    0,   0,   0,   0,   0,   0,  18,   0,   0,   7,
+    0,   0,   0,   0,   7,   0,  10,   0,  21,   0,
+    0,   0,   0,   0,   0,   0,   8,   0,   0,   0,
+    0,   0,  14,   0,   0,   0,  18,   0,   0,   0,
+    0,   0,   0,   0,   0,   0,   5,   0,   0,   0,
+    0,   8,  11,   0,   0,   6,  23,   0,   0,   6,
+    0,   0,   0,   0,   5,   0,   0,   0,   0,   0,
+    0,   5,  27,   5,   0,  22,  48,   5,   0,   0,
+   11,   0,   5,   0,   5,   0,   0,   0,   7,   0,
+    0,   0,   0,   0,   0,   0,  30,   0,   0,   0,
+    0,  32,  43,   0,   6,   0,  10,   0,   6,   9,
+    0,   0,   0,   0,   0,   0,   7,   0,   0,   0,
+    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+    0,   0,   0,   0,   0,   0,   0,   0,  18,   0,
+   12,   0,   0,  26,   0,   9,   0,   0,   0,   7,
+    0,   0,   0,   0,   0,  17,   5,   0,   0,   0
 };
 #endif
 /*------------------/-------------------/-------------------/------------------/
@@ -120,59 +135,33 @@ static void flip_rows_range(uint8_t *mat, int row_start, int row_end, int cols)
 #endif
 
 /**
- * @brief 从1024个原始传感点预处理成260个点的输入矩阵
+ * @brief 从1024个原始传感点预处理成160个点的输入矩阵
  * @description
- *  这个函数执行一个特定的硬件到模型的映射转换。
- *  1. 将1024个点看作一个32x32的矩阵。
- *  2. 提取出右侧的32x10子矩阵（列22-31）。
- *  3. 对这个32x10矩阵进行行重排，生成26x10的输出矩阵。
- *  行映射规则:
- *    - 输出行0 = 输入行20
- *    - 输出行1-12 = 输入行21-32
- *    - 输出行13 = 输入行19
- *    - 输出行14-25 = 输入行18-7（递减）
- * @param raw_1024_data 指向1024个原始rt_uint8_t传感器的指针。
- * @param output_260_data 指向输出的260个rt_uint8_t数组的指针 (最终用于模型推理)。
- * (2025-11-09)
+ *  映射规则（来自 docs/sensor_mapping.md）：
+ *  1. 将1024字节看作32×32矩阵（行优先）
+ *  2. 仅使用左上角16×10子矩阵（行0-15，列0-9）
+ *  3. 行重排规则（0-based索引）：
+ *     - 子矩阵行 r ∈ [0,7]  → 输出索引 (15-r)*10 + c  （输出位置81-160）
+ *     - 子矩阵行 r ∈ [8,15] → 输出索引 (r-8)*10  + c  （输出位置1-80）
+ * @param raw_1024_data 指向1024字节原始传感器数据的指针
+ * @param output_160_data 指向输出160字节数组的指针（用于模型推理）
+ * (2026-05-06)
  */
-extern void preprocess_1024_to_260(const rt_uint8_t *raw_1024_data, rt_uint8_t *output_260_data)
+extern void preprocess_1024_to_160(const rt_uint8_t *raw_1024_data, rt_uint8_t *output_160_data)
 {
-    // 步骤1: 从32x32矩阵的右侧提取32x10的子矩阵
-    // 注意: 我们需要26x10的输出，但先将32行数据提取出来进行行重排
-    rt_uint8_t temp_matrix[32][SENSOR_COLS];
-    for (int r = 0; r < 32; ++r)
+    int r, c, out_idx;
+    /* 遍历16×10子矩阵，按映射规则填充输出数组 (2026-05-06) */
+    for (r = 0; r < 16; r++)
     {
-        for (int c = 0; c < SENSOR_COLS; ++c)
+        for (c = 0; c < 10; c++)
         {
-            // 从1024点的一维数组中定位到32x32矩阵的右侧10列（列22-31）
-            temp_matrix[r][c] = raw_1024_data[r * 32 + (c + 22)];
+            if (r <= 7)
+                out_idx = (15 - r) * 10 + c;  /* 行0-7 → 输出位置81-160 */
+            else
+                out_idx = (r - 8) * 10 + c;   /* 行8-15 → 输出位置1-80 */
+            output_160_data[out_idx] = raw_1024_data[r * 32 + c];
         }
     }
-
-    // 步骤2: 创建最终的26x10矩阵
-    rt_uint8_t final_matrix[SENSOR_ROWS][SENSOR_COLS] = {0};
-
-    // 步骤3: 执行行重排逻辑（使用0-based索引）
-    // 输出行0 = 输入第20行（索引19）
-    rt_memcpy(final_matrix[0], temp_matrix[19], SENSOR_COLS * sizeof(rt_uint8_t));
-
-    // 输出行1-12 = 输入第21-32行（索引20-31）
-    for (int i = 0; i < 12; ++i)
-    {
-        rt_memcpy(final_matrix[i + 1], temp_matrix[20 + i], SENSOR_COLS * sizeof(rt_uint8_t));
-    }
-
-    // 输出行13 = 输入第19行（索引18）
-    rt_memcpy(final_matrix[13], temp_matrix[18], SENSOR_COLS * sizeof(rt_uint8_t));
-
-    // 输出行14-25 = 输入第18-7行（索引17-6，递减）
-    for (int i = 0; i < 12; ++i)
-    {
-        rt_memcpy(final_matrix[14 + i], temp_matrix[17 - i], SENSOR_COLS * sizeof(rt_uint8_t));
-    }
-
-    // 步骤4: 将重排后的 final_matrix 扁平化，存入输出数组中
-    rt_memcpy(output_260_data, final_matrix, SENSOR_DATA_SIZE * sizeof(rt_uint8_t));
 }
 
 /**
@@ -190,58 +179,35 @@ extern void preprocess_1024_to_260(const rt_uint8_t *raw_1024_data, rt_uint8_t *
 /-------------------/-------------------/-------------------/-----------------*/
 rt_bool_t extract_mattress_frame(const uint8_t *dma_buf, size_t dma_len)
 {
-    // 本地缓存用于查找帧头，不修改原始DMA缓存
-    #if DEBUG_MODE
-    rt_kprintf("[DBG] extract_mattress_frame: dma_len=%d, local_buf[0..3]=%02X %02X %02X %02X\n",
-        dma_len, local_buf[0], local_buf[1], local_buf[2], local_buf[3]);
-    #endif
+    (void)dma_buf; /* 未使用的参数 (2026-05-06) */
+    /* 本地缓存用于查找帧尾，不修改原始DMA缓存 (2026-05-06) */
     if (dma_len > sizeof(local_buf))
     {
         rt_kprintf("Data error to cache\n");
         return RT_FALSE;
     }
-    // 查找帧头
-    for (size_t i = 0; i + FRAME_HEADER_LEN <= dma_len; i++)
+    /* 查找帧尾标识符 AA 55 03 99，数据在标识符之前，与InDevelop项目一致 (2026-05-06) */
     {
-        if (rt_memcmp(&local_buf[i], FRAME_HEADER, FRAME_HEADER_LEN) == 0)
+        size_t i;
+        for (i = FRAME_LEN; i + FRAME_HEADER_LEN <= dma_len; i++)
         {
-            #if DEBUG_MODE
-            rt_kprintf("[DBG] frame header found at i=%d, need i+FRAME_LEN=%d <= dma_len=%d\n",
-                i, i + FRAME_LEN, dma_len);
-            #endif
-            if (i + FRAME_LEN <= dma_len)
+            if (rt_memcmp(&local_buf[i], FRAME_HEADER, FRAME_HEADER_LEN) == 0)
             {
                 #if DEBUG_MODE
-                rt_memcpy(Origin_MattressData_Resize, test_data, sizeof(Origin_MattressData_Resize));
+                /* 直接注入160字节测试数据，跳过256->160转换 (2026-05-06) */
+                rt_memcpy(Origin_MattressData, test_data_160, sizeof(Origin_MattressData));
                 #else
-                // 数据集采集到数据在最末端有标识符 （应急）
-                if (i == 1024 && sensor_uart_rx_len == 1028)
-                {
-                    rt_memcpy(Origin_MattressData_Resize, &local_buf[0], FRAME_LEN);
-                }
-                else
-                    rt_memcpy(Origin_MattressData_Resize, &local_buf[i + FRAME_HEADER_LEN], FRAME_LEN);
-                #endif
-                preprocess_1024_to_260(Origin_MattressData_Resize, Origin_MattressData);
-                #if DEBUG_MODE
-                rt_kprintf("[DBG] after preprocess, Origin_MattressData[0..5]=%d %d %d %d %d %d\n",
-                    Origin_MattressData[0], Origin_MattressData[1], Origin_MattressData[2],
-                    Origin_MattressData[3], Origin_MattressData[4], Origin_MattressData[5]);
+                /* 标识符前的256字节即为一帧数据 (2026-05-06) */
+                rt_memcpy(Origin_MattressData_Resize, &local_buf[i - FRAME_LEN], FRAME_LEN);
+                preprocess_1024_to_160(Origin_MattressData_Resize, Origin_MattressData);  /* 1024→160点预处理 (2026-05-06) */
                 #endif
                 rt_memcpy(UploadSrcMattressData, Origin_MattressData, sizeof(UploadSrcMattressData));
                 return RT_TRUE;
             }
-            else
-            {
-                #if DEBUG_MODE
-                rt_kprintf("[DBG] not enough data after header, returning FALSE\n");
-                #endif
-                return RT_FALSE;
-            }
         }
     }
 
-    rt_kprintf("No frame header found in buffer\n");
+    rt_kprintf("No frame end marker found in buffer\n");
     return RT_FALSE;
 }
 
@@ -266,13 +232,8 @@ static void sensor_thread_entry(void *parameter)
     {
         if (rt_event_recv(&uart_rx_event, 0x01, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &e) == RT_EOK)
         {
-            if (sensor_uart_rx_len < 1024)
-            {
-                #if DEBUG_MODE
-                rt_kprintf("[DBG] sensor_uart_rx_len=%d < 1024, skipped\n", sensor_uart_rx_len);
-                #endif
+            if (sensor_uart_rx_len < 1024)  /* 最小帧长度：1024字节数据 (2026-05-06) */
                 continue;
-            }
 			
             rt_enter_critical();
             myUSART2_DMA_Disable();
@@ -287,26 +248,9 @@ static void sensor_thread_entry(void *parameter)
             #endif
             if (extract_mattress_frame(sensor_uart_rx_buffer, sizeof(sensor_uart_rx_buffer)))
             {
-                #if DEBUG_MODE
-                rt_kprintf("[DBG] extract OK, Origin[0..5]=%d %d %d %d %d %d, Upload[0..5]=%d %d %d %d %d %d\n",
-                    Origin_MattressData[0], Origin_MattressData[1], Origin_MattressData[2],
-                    Origin_MattressData[3], Origin_MattressData[4], Origin_MattressData[5],
-                    UploadSrcMattressData[0], UploadSrcMattressData[1], UploadSrcMattressData[2],
-                    UploadSrcMattressData[3], UploadSrcMattressData[4], UploadSrcMattressData[5]);
-                #endif
-                if (ai_should_schedule_model(Origin_MattressData))
-                {
-                    model.status = AI_STATUS_IDLE;
-                    // rt_kprintf("Deal Data Ready...\n");
-                    rt_event_send(&data_ready_event, 0x01);
-                }
+                model.status = AI_STATUS_IDLE;
+                rt_event_send(&data_ready_event, 0x01);
             }
-            #if DEBUG_MODE
-            else
-            {
-                rt_kprintf("[DBG] extract returned FALSE\n");
-            }
-            #endif
             rt_memset(sensor_uart_rx_buffer, 0, sizeof(sensor_uart_rx_buffer));
         }
         rt_thread_mdelay(15);

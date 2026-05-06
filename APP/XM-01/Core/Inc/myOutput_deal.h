@@ -16,7 +16,7 @@ typedef enum
     STATE_BACK_WAIT,
 } CommState;
 
-extern unsigned char UploadSrcMattressData[260];
+extern unsigned char UploadSrcMattressData[160];  /* 上传缓冲区，与160点输出一致 (2026-05-06) */
 extern struct rt_event output_uart_rx_event;
 
 #endif

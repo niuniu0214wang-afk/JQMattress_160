@@ -41,7 +41,7 @@ static t_iap s_iap;
 
 /* BIN文件特殊标识，防止错乱的BIN文件 */
 const char iap_tag[] __attribute__((section(".iap_tag"))) = "OTA_TAG";
-unsigned char UploadSrcMattressData[260] = {0};
+unsigned char UploadSrcMattressData[160] = {0};  /* 上传缓冲区，与160点输出一致 (2026-05-06) */
 
 static ProtocolFrame resp;
 static ProtocolFrame rx_frame;
@@ -160,16 +160,16 @@ static void upload_devide_info(void)
 /-------------------/-------------------/-------------------/-----------------*/
 static void upload_StatusPackage(void)
 {
-    uint8_t myPayload[10 + 260] = {0x02, 0x11, 0x01, 0x0a};
+    uint8_t myPayload[10 + 160] = {0x02, 0x11, 0x01, 0x0a};  /* payload改为160字节 (2026-05-06) */
     rt_uint8_t output_frame_ctrl = FRAME_CTL_TYPE_DATA;
 
-    /* 直接使用AI线程输出的稳定值（25帧EMA+变化检测已保证稳定性）(2026-04-07) */
+    /* 160点版本不计算腰部坐标，waist字段填0xFF (2026-05-06) */
     myPayload[4] = g_posture_0;
-    myPayload[5] = g_waist_x_0;
-    myPayload[6] = g_waist_y_0;
+    myPayload[5] = 0xFF;
+    myPayload[6] = 0xFF;
     myPayload[7] = g_posture_1;
-    myPayload[8] = g_waist_x_1;
-    myPayload[9] = g_waist_y_1;
+    myPayload[8] = 0xFF;
+    myPayload[9] = 0xFF;
 
     rt_memcpy(myPayload + 10, UploadSrcMattressData, sizeof(UploadSrcMattressData));
     //---------------------------------------------

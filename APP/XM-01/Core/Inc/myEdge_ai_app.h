@@ -8,16 +8,14 @@
 //#include "app_x-cube-ai.h"
 //#include "mcu_body_analyzer.h"
 
-#define SENSOR_ROWS 26
+/* 传感器矩阵配置 - 16x10 = 160传感器点（1024→160映射输出）(2026-05-06) */
+#define SENSOR_ROWS 16
 #define SENSOR_COLS 10
-#define SENSOR_DATA_SIZE (SENSOR_ROWS * SENSOR_COLS)
+#define SENSOR_DATA_SIZE (SENSOR_ROWS * SENSOR_COLS)  /* 160 = 16 * 10 */
 
-/* 质心 (Center of Mass) 结构体 - 使用浮点坐标以保持精度 - 2025-11-04 */
-typedef struct
-{
-    float row; // CoM行坐标(0-25)
-    float col; // CoM列坐标(0-9)
-} CoM_t;
+/* 上下分割配置 - 每侧8x10 = 80传感器点 (2026-05-06) */
+#define SENSOR_HALF_ROWS 8
+#define SENSOR_HALF_SIZE (SENSOR_HALF_ROWS * SENSOR_COLS)  /* 80 = 8 * 10 */
 
 typedef enum
 {
@@ -35,26 +33,35 @@ typedef struct model_T
 } model_t;
 
 extern model_t model;
-extern uint8_t Origin_MattressData[260];
+extern uint8_t Origin_MattressData[160];  /* 16x10矩阵，1024→160映射输出 (2026-05-06) */
 
-/* 直接输出变量 - 避免struct对齐问题 - 2025-11-06 */
+/* 直接输出变量 (2026-05-06) */
 extern uint8_t g_person_count;
 extern uint8_t g_posture_0;
-extern uint8_t g_waist_x_0;
-extern uint8_t g_waist_y_0;
 extern uint8_t g_posture_1;
-extern uint8_t g_waist_x_1;
-extern uint8_t g_waist_y_1;
 
+/* 计算160个元素的和 (2026-05-06) */
+uint32_t calc_160_sum(const uint8_t *data);
 
-/* 计算260个元素的和 - 2025-11-04 */
-uint32_t calc_260_sum(const uint8_t *data);
+/* 计算160个元素中非零值的个数 (2026-05-06) */
+uint16_t sensor_number_160(const uint8_t *data);
 
-/* 计算260个元素中非零值的个数 - 2025-11-04 */
-uint16_t sensor_number(const uint8_t *data);
+/* 分割16x10矩阵为上下两部分(各8x10) (2026-05-06) */
+void split_upper_lower_matrix(const uint8_t *input_data, uint8_t *upper_matrix, uint8_t *lower_matrix);
 
-/* Model处理函数 - 集成所有检测逻辑，返回人数(0=空床, 1=一人, 2=两人) - 2025-11-06 */
+/* 计算上半部分(output[80:160])的压力和 (2026-05-06) */
+uint32_t calc_sum_upper_half(const uint8_t *input_data);
+
+/* 计算下半部分(output[0:80])的压力和 (2026-05-06) */
+uint32_t calc_sum_lower_half(const uint8_t *input_data);
+
+/* 计算上半部分的非零传感器点数 (2026-05-06) */
+uint16_t count_nonzero_in_upper_half(const uint8_t *input_data);
+
+/* 计算下半部分的非零传感器点数 (2026-05-06) */
+uint16_t count_nonzero_in_lower_half(const uint8_t *input_data);
+
+/* Model处理函数 (2026-05-06) */
 int Model(const uint8_t *input);
-rt_bool_t ai_should_schedule_model(const uint8_t *input);
 
 #endif // MYEDGE_AI_APP_H

@@ -12,7 +12,7 @@
 
 extern struct rt_event uart_rx_event;
 extern struct rt_event data_ready_event;
-extern uint8_t Origin_MattressData_Resize[1024];
-extern uint8_t Origin_MattressData[260];
+extern uint8_t Origin_MattressData_Resize[1024];  /* 原始1024字节帧缓冲 (2026-05-06) */
+extern uint8_t Origin_MattressData[160];           /* 16x10矩阵尺寸，1024→160映射输出 (2026-05-06) */
 #endif 
 
