@@ -6,27 +6,36 @@ LR_IROM1 0x08040000 0x00010000  {    ; load region size_region
   ER_IROM1 0x08040000 0x00010000  {  ; load address = execution address
    *.o (RESET, +First)
    *(InRoot$$Sections)
-   *(.rti_fn.*)                      ; RT_thread初始�?
-   .ANY (+RO)                        
+   *(.rti_fn.*)                      ; RT_thread初始化
+   .ANY (+RO)
    .ANY (+XO)
   }
-  RW_RAM 0x20000000 0x0001C000 {
+  RW_IRAM1 0x20000000 0x0001C000  {  ; SRAM1 112 KB
    .ANY (+RW +ZI)
   }
-  RW_RAM 0x20000000 0x0001C000 {
+  RW_IRAM2 0x2001C000 0x00004000  {  ; SRAM2 16 KB
    .ANY (+RW +ZI)
   }
 }
 
-; 为IAP标签专门分配精确�?字节空间
+; CCM RAM 64 KB (0x10000000) — 仅 CPU 可访问，不支持 DMA
+; 用于存放 breath_rate 和 mySensor_deal 的大静态缓冲区 (2026-05-06)
+LR_CCM 0x10000000 0x00010000  {
+  RW_CCM 0x10000000 0x00010000  {
+   breath_rate.o (+RW +ZI)
+   mysensor_deal.o (+RW +ZI)
+  }
+}
+
+; 为IAP标签专门分配精确8字节空间
 LR_IROM_TAG 0x08050000 0x00000008  {  ; 精确分配8字节
   ER_IROM_TAG 0x08050000 0x00000008  {
    *(.iap_tag)  ; 自定义段名称
   }
 }
 
-LR_IROM2 0x08050008 0x000AFFF8  {  ; 紧接标签后开始，充分利用剩余空间
-  ER_IROM2 0x08050008 0x000AFFF8  {  ; load address = execution address
+LR_IROM2 0x08050008 0x0004FFF8  {  ; 紧接标签后开始，充分利用剩余空间
+  ER_IROM2 0x08050008 0x0004FFF8  {  ; load address = execution address
    .ANY (+RO)
   }
 }
