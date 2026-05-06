@@ -425,6 +425,11 @@
               <FilePath>..\Core\Src\posture_classifier.c</FilePath>
             </File>
             <File>
+              <FileName>breath_rate.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\breath_rate.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/main.c</FilePath>
